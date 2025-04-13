@@ -3,6 +3,7 @@ package application
 import (
 	"diplom/internal/auth"
 	"diplom/internal/controllers"
+	"diplom/internal/problems"
 	"diplom/internal/repo"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +27,8 @@ func InitApplication() (*Application, error) {
 	}
 	app := &Application{
 		Handlers: controllers.Handlers{
-			AuthService: auth.NewAuthService(pgClient, logger),
+			AuthService:    auth.NewAuthService(pgClient, logger),
+			ProblemService: problems.NewProblemService(pgClient, logger),
 		},
 		Logger: logger,
 	}

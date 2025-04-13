@@ -33,7 +33,7 @@ func GenerateToken(userID string, role string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(config.SecretKey)
+	return token.SignedString(config.CFG.SecretKey)
 }
 
 // func ParseClaimsFromToken(requestToken string) (Claims, error) {

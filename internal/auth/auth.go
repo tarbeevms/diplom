@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -19,6 +20,7 @@ type SessionRepository interface {
 	DeleteSessionByToken(token string) error
 	GetSessionByToken(token string) (*Session, error)
 	VerifyUsernamePassword(username, password string) (userID, role string, match bool, err error)
+	AddUser(username, hashedPassword string) error
 }
 
 type AuthService struct {
@@ -93,4 +95,13 @@ func (a *AuthService) CreateSession(username, userID, role string) (string, erro
 		return "", fmt.Errorf("failed to write (rewrite) session, %w", err)
 	}
 	return accessToken, nil
+}
+
+// HashPassword hashes a plain-text password using bcrypt.
+func HashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }

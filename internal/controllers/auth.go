@@ -40,7 +40,37 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 }
 
 // SignupHandler обрабатывает запрос на регистрацию
-func SignupHandler(c *gin.Context) {
-	// Здесь должна быть логика регистрации пользователя
-	c.JSON(http.StatusOK, gin.H{"message": "Регистрация успешна"})
+func (h *Handlers) SignupHandler(c *gin.Context) {
+	var req auth.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Validate input
+	if req.Username == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username and password are required"})
+		return
+	}
+
+	// Hash the password
+	hashedPassword, err := auth.HashPassword(req.Password)
+	if err != nil {
+		h.AuthService.Logger.Error("error hashing password", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password"})
+		return
+	}
+
+	// TODO: Add check is user already exists (maybe handle repo error)
+
+	// Save the user to the database
+	err = h.AuthService.SessionRepo.AddUser(req.Username, hashedPassword)
+	if err != nil {
+		h.AuthService.Logger.Error("error saving user to database", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	h.AuthService.Logger.Info("user registered successfully", zap.String("username", req.Username))
+	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }

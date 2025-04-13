@@ -14,8 +14,8 @@ func (app *Application) InitServer() {
 	// Группа публичных маршрутов для аутентификации
 	authGroup := router.Group("/api/auth")
 	{
-		authGroup.POST("/login", controllers.LoginHandler)
-		authGroup.POST("/signup", controllers.SignupHandler)
+		authGroup.POST("/login", app.Handlers.LoginHandler)
+		authGroup.POST("/signup", app.Handlers.SignupHandler)
 	}
 
 	// Группа защищённых маршрутов
@@ -27,7 +27,7 @@ func (app *Application) InitServer() {
 
 	// Группа маршрутов для администраторов
 	admin := router.Group("/api/admin")
-	admin.Use(middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"))
+	admin.Use(middleware.AuthMiddleware(app.Handlers.AuthService), middleware.RoleMiddleware("admin"))
 	{
 		admin.GET("/dashboard", controllers.AdminDashboardHandler)
 	}

@@ -31,7 +31,7 @@ func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 		claims := &auth.Claims{}
 
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return config.SecretKey, nil
+			return config.CFG.SecretKey, nil
 		})
 		if err != nil || !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Неверный или просроченный токен"})
