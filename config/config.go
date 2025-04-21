@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var CFG Config = Config{}
+var CFG Config
 
 type Config struct {
-	Database  PostgreSQLConfig `mapstructure:"postgre" yaml:"postgre"`
+	Database  PostgreSQLConfig `mapstructure:"postgres" yaml:"postgres"`
 	SecretKey string           `mapstructure:"secret_key" yaml:"secret_key"`
 }
 
@@ -21,20 +21,27 @@ type PostgreSQLConfig struct {
 	Database string `mapstructure:"database" yaml:"database"`
 }
 
-func init() {
+func ConfigInit() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc/app/")
+	viper.AddConfigPath("/app/")
+	viper.AddConfigPath("/app/config/")
+	viper.AddConfigPath("../../config/")
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}
+
+	CFG = GetConfig()
+
+	log.Printf("Config file used: %s", viper.ConfigFileUsed())
 }
 
 func GetConfig() Config {
-	if err := viper.Unmarshal(&CFG); err != nil {
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}
-	return CFG
+	return config
 }

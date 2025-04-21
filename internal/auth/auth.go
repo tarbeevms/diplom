@@ -15,12 +15,16 @@ var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
 )
 
+var (
+	CookieExpirationTime = time.Now().Add(5 * time.Hour)
+)
+
 type SessionRepository interface {
 	AddSession(sess *Session) error
 	DeleteSessionByToken(token string) error
 	GetSessionByToken(token string) (*Session, error)
 	VerifyUsernamePassword(username, password string) (userID, role string, match bool, err error)
-	AddUser(username, hashedPassword string) error
+	AddUser(username, hashedPassword, role string) error
 }
 
 type AuthService struct {

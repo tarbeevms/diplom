@@ -4,6 +4,7 @@ import (
 	"diplom/internal/auth"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -36,6 +37,7 @@ func (h *Handlers) LoginHandler(c *gin.Context) {
 	}
 
 	h.AuthService.Logger.Info("user loggined", zap.String("username", req.Username))
+	c.SetCookie("session", token, int(time.Until(auth.CookieExpirationTime).Seconds()), "/", "", false, true)
 	c.JSON(http.StatusOK, auth.LoginResponse{Token: token})
 }
 
@@ -64,7 +66,7 @@ func (h *Handlers) SignupHandler(c *gin.Context) {
 	// TODO: Add check is user already exists (maybe handle repo error)
 
 	// Save the user to the database
-	err = h.AuthService.SessionRepo.AddUser(req.Username, hashedPassword)
+	err = h.AuthService.SessionRepo.AddUser(req.Username, hashedPassword, "user")
 	if err != nil {
 		h.AuthService.Logger.Error("error saving user to database", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})

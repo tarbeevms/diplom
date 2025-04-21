@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/docker/client"
 	"go.uber.org/zap"
 )
 
@@ -15,7 +16,7 @@ type Problem struct {
 }
 
 type SolutionRequest struct {
-	ProblemUUID string `json:"problem_uuid" binding:"required"`
+	ProblemUUID string `json:"problem_uuid"`
 	Code        string `json:"code" binding:"required"`
 	Language    string `json:"language" binding:"required"`
 }
@@ -33,9 +34,8 @@ type SolutionResultDetails struct {
 }
 
 type TestCase struct {
-	Name   string
-	Input  string
-	Output string
+	Input  string `json:"input"`
+	Output string `json:"output"`
 }
 
 type FailedTestCase struct {
@@ -45,6 +45,7 @@ type FailedTestCase struct {
 
 type ProblemRepository interface {
 	GetTestCasesByProblemUUID(problemUUID string) ([]TestCase, error)
+	GetProblemByUUID(uuid string) (*Problem, error)
 }
 
 type ProblemService struct {
@@ -53,11 +54,16 @@ type ProblemService struct {
 	Logger       *zap.Logger
 }
 
-func NewProblemService(repo ProblemRepository, logger *zap.Logger) *ProblemService {
-	return &ProblemService{
-		ProblemRepo: repo,
-		Logger:      logger.Named("problem"),
+func NewProblemService(repo ProblemRepository, logger *zap.Logger) (*ProblemService, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
+	return &ProblemService{
+		ProblemRepo:  repo,
+		Logger:       logger.Named("problem"),
+		DockerClient: DockerClient{client: cli},
+	}, nil
 }
 
 func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionRequest) (*SolutionResult, error) {
@@ -75,7 +81,7 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 	defer s.DockerClient.RemoveContainer(containerID)
 
 	// Execute the solution against all test cases
-	passed, failedTestCase, err := s.DockerClient.ExecuteCode(ctx, containerID, testCases)
+	passed, failedTestCase, err := s.DockerClient.ExecuteCode(ctx, containerID, req.Language, testCases)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute code: %w", err)
 	}
@@ -94,7 +100,7 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 	if !passed {
 		return &SolutionResult{
 			Status:  "failed",
-			Message: "Test case failed",
+			Message: "Test cases failed",
 			Details: details,
 		}, nil
 	}

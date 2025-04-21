@@ -1,7 +1,0 @@
-mysql:
-  host: mysql
-  port: 3306
-  database: notes
-  username: root
-  password: root
-secret_key: secret_key

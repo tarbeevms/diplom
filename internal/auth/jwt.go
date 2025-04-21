@@ -28,12 +28,11 @@ func GenerateToken(userID string, role string) (string, error) {
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 			IssuedAt:  time.Now().Unix(),
-			Issuer:    "your-app-name",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(config.CFG.SecretKey)
+	return token.SignedString([]byte(config.CFG.SecretKey))
 }
 
 // func ParseClaimsFromToken(requestToken string) (Claims, error) {

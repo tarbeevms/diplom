@@ -30,19 +30,20 @@ import (
 
 // SubmitSolutionHandler processes a solution submitted for a problem
 func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
-	var req problems.SolutionRequest
-
-	// Bind the request body to the struct
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.Logger.Error("invalid solution request", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+	// Получаем UUID проблемы из параметров URL
+	problemUUID := c.Param("uuid")
+	if _, err := uuid.Parse(problemUUID); err != nil {
+		h.Logger.Error("invalid problem UUID", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid problem UUID"})
 		return
 	}
 
-	// Validate the problem UUID
-	if _, err := uuid.Parse(req.ProblemUUID); err != nil {
-		h.Logger.Error("invalid problem UUID", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid problem UUID"})
+	// Привязываем тело запроса к структуре
+	var req problems.SolutionRequest
+	req.ProblemUUID = problemUUID
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.Logger.Error("invalid solution request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -56,4 +57,26 @@ func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
 
 	// Return the result to the user
 	c.JSON(http.StatusOK, result)
+}
+
+// GetProblemHandler возвращает информацию о задаче по UUID
+func (h *Handlers) GetProblemHandler(c *gin.Context) {
+	// Получаем UUID проблемы из параметров URL
+	problemUUID := c.Param("uuid")
+	if _, err := uuid.Parse(problemUUID); err != nil {
+		h.Logger.Error("invalid problem UUID", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid problem UUID"})
+		return
+	}
+
+	// Получаем информацию о проблеме из репозитория
+	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID)
+	if err != nil {
+		h.Logger.Error("failed to get problem", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{"error": "Problem not found"})
+		return
+	}
+
+	// Возвращаем информацию о проблеме
+	c.JSON(http.StatusOK, problem)
 }

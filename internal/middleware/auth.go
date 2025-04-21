@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 // AuthMiddleware проверяет наличие и валидность JWT-токена
 func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Чтение заголовка Authorization
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Отсутствует токен авторизации"})
@@ -31,9 +31,10 @@ func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 		claims := &auth.Claims{}
 
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return config.CFG.SecretKey, nil
+			return []byte(config.CFG.SecretKey), nil
 		})
 		if err != nil || !token.Valid {
+			fmt.Println(err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Неверный или просроченный токен"})
 			return
 		}

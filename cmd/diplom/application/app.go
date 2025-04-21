@@ -1,6 +1,7 @@
 package application
 
 import (
+	"diplom/config"
 	"diplom/internal/auth"
 	"diplom/internal/controllers"
 	"diplom/internal/problems"
@@ -17,6 +18,7 @@ type Application struct {
 }
 
 func InitApplication() (*Application, error) {
+	config.ConfigInit()
 	pgClient, err := repo.InitPG()
 	if err != nil {
 		return nil, err
@@ -25,10 +27,15 @@ func InitApplication() (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+	problemService, err := problems.NewProblemService(pgClient, logger)
+	if err != nil {
+		return nil, err
+	}
 	app := &Application{
 		Handlers: controllers.Handlers{
 			AuthService:    auth.NewAuthService(pgClient, logger),
-			ProblemService: problems.NewProblemService(pgClient, logger),
+			ProblemService: problemService,
+			Logger:         logger.Named("handlers"),
 		},
 		Logger: logger,
 	}

@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: ../ # Путь к корневой папке проекта
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # Expose the app on port 8080
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432" # Expose PostgreSQL on port 5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: diplom
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist PostgreSQL data
+      - ./_sql/init.sql:/docker-entrypoint-initdb.d/init.sql # SQL script for initialization
+
+volumes:
+  postgres_data:

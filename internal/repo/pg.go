@@ -7,6 +7,7 @@ import (
 	"diplom/pkg/dbconnect"
 	"fmt"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,9 +24,15 @@ func InitPG() (*PGClient, error) {
 
 }
 
-// AddSession добавляет новую сессию в MySQL.
+// AddSession добавляет новую сессию или обновляет существующую, устанавливая token и обновляя created_at.
 func (sr *PGClient) AddSession(sess *auth.Session) error {
-	query := "REPLACE INTO sessions (username, token) VALUES (?, ?)"
+	query := `
+        INSERT INTO sessions (username, token, created_at) 
+        VALUES ($1, $2, CURRENT_TIMESTAMP)
+        ON CONFLICT (username) DO UPDATE 
+            SET token = EXCLUDED.token,
+                created_at = CURRENT_TIMESTAMP
+    `
 	_, err := sr.db.Exec(query, sess.Username, sess.Token)
 	if err != nil {
 		return fmt.Errorf("failed to insert session: %w", err)
@@ -45,7 +52,7 @@ func (sr *PGClient) DeleteSessionByToken(token string) error {
 
 // GetSessionByToken получает сессию по токену.
 func (sr *PGClient) GetSessionByToken(token string) (*auth.Session, error) {
-	query := "SELECT username, token FROM sessions WHERE token = ? LIMIT 1"
+	query := "SELECT username, token FROM sessions WHERE token = $1 LIMIT 1"
 	row := sr.db.QueryRow(query, token)
 
 	var sess auth.Session
@@ -61,7 +68,7 @@ func (sr *PGClient) GetSessionByToken(token string) (*auth.Session, error) {
 
 // GetUserByUsername получает пользователя по имени пользователя.
 func (sr *PGClient) VerifyUsernamePassword(username, password string) (userID, role string, match bool, err error) {
-	query := "SELECT password, user_id, role FROM users WHERE username = $1 LIMIT 1"
+	query := "SELECT password, uuid, role FROM users WHERE username = $1 LIMIT 1"
 	row := sr.db.QueryRow(query, username)
 	var hashedPassword string
 	err = row.Scan(&hashedPassword, &userID, &role)
@@ -72,9 +79,10 @@ func (sr *PGClient) VerifyUsernamePassword(username, password string) (userID, r
 }
 
 // AddUser adds a new user to the database.
-func (sr *PGClient) AddUser(username, hashedPassword string) error {
-	query := "INSERT INTO users (username, password) VALUES ($1, $2)"
-	_, err := sr.db.Exec(query, username, hashedPassword)
+func (sr *PGClient) AddUser(username, hashedPassword, role string) error {
+	uuid := uuid.New()
+	query := "INSERT INTO users (username, password, uuid, role) VALUES ($1, $2, $3, $4)"
+	_, err := sr.db.Exec(query, username, hashedPassword, uuid, role)
 	if err != nil {
 		return fmt.Errorf("failed to insert user: %w", err)
 	}
@@ -82,11 +90,11 @@ func (sr *PGClient) AddUser(username, hashedPassword string) error {
 }
 
 func (sr *PGClient) GetProblemByUUID(uuid string) (*problems.Problem, error) {
-	query := "SELECT uuid, description FROM problems WHERE uuid = $1 LIMIT 1"
+	query := "SELECT uuid, name, difficulty, description FROM problems WHERE uuid = $1 LIMIT 1"
 	row := sr.db.QueryRow(query, uuid)
 
 	var problem problems.Problem
-	err := row.Scan(&problem.UUID, &problem.Description)
+	err := row.Scan(&problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("problem not found")
 	} else if err != nil {
@@ -94,15 +102,6 @@ func (sr *PGClient) GetProblemByUUID(uuid string) (*problems.Problem, error) {
 	}
 
 	return &problem, nil
-}
-
-func (sr *PGClient) SubmitSolution(problemUUID string, code string) error {
-	query := "INSERT INTO solutions (problem_uuid, code) VALUES ($1, $2)"
-	_, err := sr.db.Exec(query, problemUUID, code)
-	if err != nil {
-		return fmt.Errorf("failed to submit solution: %w", err)
-	}
-	return nil
 }
 
 func (sr *PGClient) GetTestCasesByProblemUUID(problemUUID string) ([]problems.TestCase, error) {

@@ -14,17 +14,17 @@ const maxRetries = 10
 const retryDelay = 5 * time.Second
 
 func PgConnFromCFG() (*sql.DB, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=true",
-		config.CFG.Database.Username,
-		config.CFG.Database.Password,
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		config.CFG.Database.Host,
 		config.CFG.Database.Port,
+		config.CFG.Database.Username,
+		config.CFG.Database.Password,
 		config.CFG.Database.Database)
 
 	var db *sql.DB
 	var err error
 	for i := 0; i < maxRetries; i++ {
-		db, err = sql.Open("mysql", dsn)
+		db, err = sql.Open("postgres", dsn)
 		if err != nil {
 			log.Printf("Failed to connect to PostgreSQL (attempt %d/%d): %v, %s", i+1, maxRetries, err, dsn)
 			time.Sleep(retryDelay)
