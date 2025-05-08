@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Application struct {
@@ -18,12 +19,16 @@ type Application struct {
 }
 
 func InitApplication() (*Application, error) {
+	gin.SetMode(gin.ReleaseMode)
+
 	config.ConfigInit()
 	pgClient, err := repo.InitPG()
 	if err != nil {
 		return nil, err
 	}
-	logger, err := zap.NewDevelopment()
+	config := zap.NewProductionConfig()
+	config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	logger, err := config.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -40,5 +45,6 @@ func InitApplication() (*Application, error) {
 		Logger: logger,
 	}
 	app.InitServer()
+
 	return app, nil
 }

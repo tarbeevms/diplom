@@ -2,10 +2,24 @@ package problems
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"os"
 
-	"github.com/docker/docker/client"
+	"github.com/docker/docker/api/types/image"
 	"go.uber.org/zap"
+)
+
+var (
+	StatusFailed  = "failed"
+	StatusSuccess = "success"
+)
+var (
+	MessageCodeCompilationFalied = "Code compilation failed"
+	MessageCodeExecutionFalied   = "Code execution failed"
+	MessageTestCasesFailed       = "Test cases failed"
+	MessageAllTestCasesPassed    = "All test cases passed!"
 )
 
 type Problem struct {
@@ -22,15 +36,15 @@ type SolutionRequest struct {
 }
 
 type SolutionResult struct {
-	Status  string                  `json:"status"`            // Status of the solution (e.g., "success", "failed")
-	Message string                  `json:"message"`           // A message describing the result
-	Details []SolutionResultDetails `json:"details,omitempty"` // Optional details (e.g., failed test case information)
+	Status      string                 `json:"status"`
+	Message     string                 `json:"message"`
+	FailedTests []TestCaseResult       `json:"failed_tests,omitempty"`
+	Details     *SolutionResultDetails `json:"details,omitempty"`
 }
 
 type SolutionResultDetails struct {
-	Input          string `json:"input"`           // Input for the test case
-	ExpectedOutput string `json:"expected_output"` // Expected output for the test case
-	ActualOutput   string `json:"actual_output"`   // Actual output from the solution
+	AverageTime   float64 `json:"average_time_ms"`
+	AverageMemory uint64  `json:"average_memory_kb"`
 }
 
 type TestCase struct {
@@ -38,9 +52,9 @@ type TestCase struct {
 	Output string `json:"output"`
 }
 
-type FailedTestCase struct {
+type TestCaseResult struct {
 	TestCase
-	ActualOutput string
+	ActualOutput string `json:"actual_output,omitempty"`
 }
 
 type ProblemRepository interface {
@@ -50,19 +64,32 @@ type ProblemRepository interface {
 
 type ProblemService struct {
 	ProblemRepo  ProblemRepository
-	DockerClient DockerClient
+	DockerClient *DockerClient
 	Logger       *zap.Logger
 }
 
 func NewProblemService(repo ProblemRepository, logger *zap.Logger) (*ProblemService, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerClient, err := NewDockerClient(logger.Named("docker"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %w", err)
+		return nil, fmt.Errorf("failed to create Docker client: %w", err)
+	}
+	languageImages := []string{
+		"python:3.9",
+		"gcc:latest",
+		// "openjdk:latest",
+	}
+	for _, imageName := range languageImages {
+		reader, err := dockerClient.client.ImagePull(context.Background(), imageName, image.PullOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to pull image %s: %w", imageName, err)
+		}
+		io.Copy(os.Stdout, reader)
+		reader.Close()
 	}
 	return &ProblemService{
 		ProblemRepo:  repo,
 		Logger:       logger.Named("problem"),
-		DockerClient: DockerClient{client: cli},
+		DockerClient: dockerClient,
 	}, nil
 }
 
@@ -75,39 +102,43 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 
 	// Create a Docker container to execute the solution
 	containerID, err := s.DockerClient.CreateContainer(ctx, req.Code, req.Language)
+	defer s.DockerClient.RemoveContainer(ctx, containerID)
+	if errors.Is(err, ErrCompilationFailed) {
+		return &SolutionResult{
+			Status:  StatusFailed,
+			Message: MessageCodeCompilationFalied,
+		}, ErrCompilationFailed
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker container: %w", err)
 	}
-	defer s.DockerClient.RemoveContainer(containerID)
 
 	// Execute the solution against all test cases
-	passed, failedTestCase, err := s.DockerClient.ExecuteCode(ctx, containerID, req.Language, testCases)
+	passed, failedTests, details, err := s.DockerClient.ExecuteCode(ctx, containerID, req.Language, testCases)
+	if errors.Is(err, ErrExecutionFailed) {
+		return &SolutionResult{
+			Status:  StatusFailed,
+			Message: MessageCodeExecutionFalied,
+		}, ErrExecutionFailed
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute code: %w", err)
-	}
-
-	details := []SolutionResultDetails{}
-
-	for _, testCase := range failedTestCase {
-		details = append(details, SolutionResultDetails{
-			Input:          testCase.Input,
-			ExpectedOutput: testCase.Output,
-			ActualOutput:   testCase.ActualOutput,
-		})
 	}
 
 	// If any test case failed, return failure result
 	if !passed {
 		return &SolutionResult{
-			Status:  "failed",
-			Message: "Test cases failed",
-			Details: details,
+			Status:      StatusFailed,
+			Message:     MessageTestCasesFailed,
+			FailedTests: failedTests,
+			Details:     &details,
 		}, nil
 	}
 
 	// If all test cases passed, return success
 	return &SolutionResult{
-		Status:  "success",
-		Message: "All test cases passed!",
+		Status:  StatusSuccess,
+		Message: MessageAllTestCasesPassed,
+		Details: &details,
 	}, nil
 }

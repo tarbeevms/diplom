@@ -122,3 +122,49 @@ func (sr *PGClient) GetTestCasesByProblemUUID(problemUUID string) ([]problems.Te
 	}
 	return testCases, nil
 }
+
+func (sr *PGClient) SaveSolution(userID, problemUUID string, details problems.SolutionResultDetails) (int, error) {
+	query := `
+        INSERT INTO solutions (
+            user_id, 
+            problem_uuid, 
+            execution_time_ms, 
+            memory_usage_kb,
+            created_at
+        ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id, problem_uuid) 
+        DO UPDATE SET 
+            execution_time_ms = $3,
+            memory_usage_kb = $4,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING id
+    `
+
+	var solutionID int
+	err := sr.db.QueryRow(
+		query,
+		userID,
+		problemUUID,
+		details.AverageTime,
+		details.AverageMemory,
+	).Scan(&solutionID)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to save solution: %w", err)
+	}
+
+	return solutionID, nil
+}
+
+func (sr *PGClient) GetAverageMetrics(problemUUID string) (float64, int64, error) {
+	query := `
+        SELECT AVG(execution_time_ms), AVG(memory_usage_kb)
+        FROM solutions
+        WHERE problem_uuid = $1
+    `
+	var avgTime float64
+	var avgMemory int64
+	err := sr.db.QueryRow(query, problemUUID).Scan(&avgTime, &avgMemory)
+
+	return avgTime, avgMemory, err
+}

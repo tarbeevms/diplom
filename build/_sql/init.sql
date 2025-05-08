@@ -38,10 +38,15 @@ CREATE TABLE solutions (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     problem_uuid VARCHAR(255) NOT NULL,
-    code TEXT NOT NULL,
-    status status_enum NOT NULL,
-    execution_time FLOAT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    execution_time_ms FLOAT NOT NULL,
+    memory_usage_kb BIGINT NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    -- Foreign key constraints
     FOREIGN KEY (user_id) REFERENCES users (uuid) ON DELETE CASCADE,
-    FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE
+    FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE,
+    
+    -- Composite unique constraint for upsert operations
+    UNIQUE (user_id, problem_uuid)
 );

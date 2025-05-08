@@ -22,13 +22,9 @@ func (app *Application) InitServer() {
 	protected.Use(middleware.AuthMiddleware(app.Handlers.AuthService))
 	{
 		protected.GET("/profile", controllers.ProfileHandler)
-		// Группа маршрутов для работы с проблемами
 		problems := protected.Group("/problem")
 		{
-			// GET запрос для получения информации о проблеме
 			problems.GET("/:uuid", app.Handlers.GetProblemHandler)
-
-			// POST запрос для отправки решения проблемы
 			problems.POST("/:uuid", app.Handlers.SubmitSolutionHandler)
 		}
 	}

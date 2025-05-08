@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"diplom/internal/problems"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -49,6 +50,10 @@ func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
 
 	// Process the solution using a separate function
 	result, err := h.ProblemService.ProcessSolution(c.Request.Context(), req)
+	if errors.Is(err, problems.ErrCompilationFailed) || errors.Is(err, problems.ErrExecutionFailed) {
+		c.JSON(http.StatusBadRequest, result)
+		return
+	}
 	if err != nil {
 		h.Logger.Error("failed to process solution", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
