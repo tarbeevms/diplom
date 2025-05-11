@@ -11,6 +11,9 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO users (uuid, username, role, password)
+VALUES ('admin', 'admin', 'admin', '$2a$10$yCz84qAx0a8/w4cy8GTCkeDu5Uwqo2fEf5Gs5wKZce3pc.LZPVoSu');
+
 CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -33,6 +36,22 @@ CREATE TABLE testcases (
     output TEXT,
     FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE
 );
+
+INSERT INTO problems (uuid, name, difficulty, description)
+VALUES (
+    '123e4567-e89b-12d3-a456-426614174000',
+    'Sample Test',
+    'easy',
+    'Write a program that outputs "output" when the input is exactly "input". For any other input, it should output "error".'
+);
+
+INSERT INTO testcases (problem_uuid, input, output)
+VALUES 
+('123e4567-e89b-12d3-a456-426614174000','input','output'),
+('123e4567-e89b-12d3-a456-426614174000','something_else','error'),
+('123e4567-e89b-12d3-a456-426614174000','','error'),
+('123e4567-e89b-12d3-a456-426614174000','123dsaadfvjnq3;4gu43gvb','error');
+
 
 CREATE TABLE solutions (
     id SERIAL PRIMARY KEY,

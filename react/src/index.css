@@ -1,0 +1,46 @@
+@config "../tailwind.config.cjs";
+@import "tailwindcss";                /* import everything (base+components+utilities) */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  @apply bg-gray-50 text-gray-800 font-inter antialiased;
+  min-height: 100vh;
+}
+
+.main-container {
+  @apply container mx-auto p-6;
+}
+
+/* Добавляем белый текст только для основного содержимого */
+main > div > h1, 
+main > div > p {
+  @apply text-white;
+}
+
+.card {
+  @apply bg-white text-gray-900 shadow-2xl rounded-2xl p-8
+         transition-transform duration-300 transform hover:scale-105 hover:shadow-3xl;
+}
+
+.heading-primary {
+  @apply text-4xl font-extrabold tracking-tight mb-4 drop-shadow-lg;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Removing the transform scale effect from general buttons to avoid conflicts */
+button:hover {
+  transition: all 0.2s ease-in-out;
+}
+
+button:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease-in-out;
+}

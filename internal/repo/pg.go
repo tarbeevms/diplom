@@ -5,7 +5,7 @@ import (
 	"diplom/internal/auth"
 	"diplom/internal/problems"
 	"diplom/pkg/dbconnect"
-	"fmt"
+	"errors"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -34,20 +34,14 @@ func (sr *PGClient) AddSession(sess *auth.Session) error {
                 created_at = CURRENT_TIMESTAMP
     `
 	_, err := sr.db.Exec(query, sess.Username, sess.Token)
-	if err != nil {
-		return fmt.Errorf("failed to insert session: %w", err)
-	}
-	return nil
+	return err
 }
 
 // DeleteSessionByToken удаляет сессию по токену.
 func (sr *PGClient) DeleteSessionByToken(token string) error {
 	query := "DELETE FROM sessions WHERE token = ?"
 	_, err := sr.db.Exec(query, token)
-	if err != nil {
-		return fmt.Errorf("failed to delete session: %w", err)
-	}
-	return nil
+	return err
 }
 
 // GetSessionByToken получает сессию по токену.
@@ -57,13 +51,7 @@ func (sr *PGClient) GetSessionByToken(token string) (*auth.Session, error) {
 
 	var sess auth.Session
 	err := row.Scan(&sess.Username, &sess.Token)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("session not found")
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to query session: %w", err)
-	}
-
-	return &sess, nil
+	return &sess, err
 }
 
 // GetUserByUsername получает пользователя по имени пользователя.
@@ -83,44 +71,122 @@ func (sr *PGClient) AddUser(username, hashedPassword, role string) error {
 	uuid := uuid.New()
 	query := "INSERT INTO users (username, password, uuid, role) VALUES ($1, $2, $3, $4)"
 	_, err := sr.db.Exec(query, username, hashedPassword, uuid, role)
-	if err != nil {
-		return fmt.Errorf("failed to insert user: %w", err)
-	}
-	return nil
+	return err
 }
 
 func (sr *PGClient) GetProblemByUUID(uuid string) (*problems.Problem, error) {
 	query := "SELECT uuid, name, difficulty, description FROM problems WHERE uuid = $1 LIMIT 1"
 	row := sr.db.QueryRow(query, uuid)
-
 	var problem problems.Problem
 	err := row.Scan(&problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("problem not found")
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to query problem: %w", err)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, problems.ErrProblemNotFound
 	}
-
-	return &problem, nil
+	return &problem, err
 }
 
 func (sr *PGClient) GetTestCasesByProblemUUID(problemUUID string) ([]problems.TestCase, error) {
-	query := "SELECT input, output FROM testcases WHERE problem_uuid = $1"
+	query := "SELECT id, input, output FROM testcases WHERE problem_uuid = $1"
 	rows, err := sr.db.Query(query, problemUUID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var testCases []problems.TestCase
+	testCases := []problems.TestCase{}
 	for rows.Next() {
 		var testCase problems.TestCase
-		if err := rows.Scan(&testCase.Input, &testCase.Output); err != nil {
+		if err := rows.Scan(&testCase.ID, &testCase.Input, &testCase.Output); err != nil {
 			return nil, err
 		}
 		testCases = append(testCases, testCase)
 	}
+
+	if len(testCases) == 0 {
+		return testCases, problems.ErrTestCasesNotFound
+	}
+
 	return testCases, nil
+}
+
+func (sr *PGClient) AddProblem(uuid, name, difficulty, description string) error {
+	query := `
+		INSERT INTO problems (uuid, name, difficulty, description) 
+		VALUES ($1, $2, $3, $4)
+	`
+	_, err := sr.db.Exec(query, uuid, name, difficulty, description)
+	return err
+}
+
+func (sr *PGClient) AddTestcase(problemUUID, input, output string) error {
+	query := `
+		INSERT INTO testcases (problem_uuid, input, output) 
+		VALUES ($1, $2, $3)
+	`
+	_, err := sr.db.Exec(query, problemUUID, input, output)
+	return err
+}
+
+func (sr *PGClient) GetAllProblems() ([]problems.Problem, error) {
+	query := "SELECT uuid, name, difficulty, description FROM problems"
+	rows, err := sr.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	problemList := []problems.Problem{}
+	for rows.Next() {
+		var problem problems.Problem
+		if err := rows.Scan(&problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description); err != nil {
+			return nil, err
+		}
+		problemList = append(problemList, problem)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return problemList, nil
+}
+
+func (sr *PGClient) DeleteTestcase(id int) error {
+	query := "DELETE FROM testcases WHERE id = $1"
+	result, err := sr.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("testcase not found")
+	}
+
+	return nil
+}
+
+func (sr *PGClient) DeleteProblem(uuid string) error {
+	query := "DELETE FROM problems WHERE uuid = $1"
+	result, err := sr.db.Exec(query, uuid)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return problems.ErrProblemNotFound
+	}
+
+	return nil
 }
 
 func (sr *PGClient) SaveSolution(userID, problemUUID string, details problems.SolutionResultDetails) (int, error) {
@@ -149,11 +215,7 @@ func (sr *PGClient) SaveSolution(userID, problemUUID string, details problems.So
 		details.AverageMemory,
 	).Scan(&solutionID)
 
-	if err != nil {
-		return 0, fmt.Errorf("failed to save solution: %w", err)
-	}
-
-	return solutionID, nil
+	return solutionID, err
 }
 
 func (sr *PGClient) GetAverageMetrics(problemUUID string) (float64, int64, error) {

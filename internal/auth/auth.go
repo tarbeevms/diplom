@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"diplom/config"
 	"errors"
 	"fmt"
 	"time"
@@ -13,6 +14,8 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
+	ErrInvalidToken       = errors.New("invalid token")
+	ErrSessionExpired     = errors.New("session expired")
 )
 
 var (
@@ -48,26 +51,38 @@ func NewAuthService(repo SessionRepository, logger *zap.Logger) *AuthService {
 	}
 }
 
-func (a *AuthService) IsAuthorized(token *jwt.Token, claims *Claims) (bool, error) {
+func (a *AuthService) IsAuthorized(tokenString string) (bool, *Claims, error) {
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.CFG.SecretKey), nil
+	})
+	if err != nil || !token.Valid {
+		return false, nil, ErrInvalidToken
+	}
+
 	session, err := a.SessionRepo.GetSessionByToken(token.Raw)
-	if err != nil || session == nil {
-		return false, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil, nil
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, nil, err
 	}
 
 	exp := claims.ExpiresAt
 	if exp == 0 {
-		return false, fmt.Errorf("invalid token, missing expiration")
+		return false, nil, ErrInvalidToken
 	}
 
 	if time.Now().Unix() > exp {
-		err := a.SessionRepo.DeleteSessionByToken(token.Raw)
+		err := a.SessionRepo.DeleteSessionByToken(session.Token)
 		if err != nil {
-			return false, fmt.Errorf("failed to delete expired session, %w", err)
+			return false, nil, err
 		}
-		return false, fmt.Errorf("session expired")
+		return false, nil, ErrSessionExpired
 	}
 
-	return true, nil
+	return true, claims, nil
 }
 
 func (a *AuthService) VerifyUserCredentials(username, password string) (userID string, role string, err error) {

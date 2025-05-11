@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -48,10 +47,10 @@ func (d *DockerClient) CreateContainer(ctx context.Context, code, language strin
 		imageName = "python:3.9"
 		srcFilename = "solution.py"
 		compileCmd = "" // Python scripts run directly
-	case "c++":
+	case "cpp":
 		imageName = "gcc:latest"
 		srcFilename = "solution.cpp"
-		compileCmd = "g++ /workspace/" + srcFilename + " -o /workspace/solution"
+		compileCmd = "g++ -O1 --param=ggc-min-expand=20 --param=ggc-min-heapsize=8192 /workspace/" + srcFilename + " -o /workspace/solution"
 	case "java":
 		imageName = "openjdk:latest"
 		srcFilename = "Solution.java"
@@ -69,10 +68,10 @@ func (d *DockerClient) CreateContainer(ctx context.Context, code, language strin
 		},
 		&container.HostConfig{
 			Resources: container.Resources{
-				Memory:     128 * 1024 * 1024, // 128 MB RAM
-				MemorySwap: 128 * 1024 * 1024, // Отключить swap
+				Memory:     512 * 1024 * 1024, // 512 MB RAM
+				MemorySwap: 512 * 1024 * 1024, // Отключить swap
 				NanoCPUs:   1000000000,        // 1 CPU (в наносекундах)
-				PidsLimit:  &[]int64{100}[0],  // Макс. количество процессов
+				PidsLimit:  &[]int64{10}[0],   // Макс. количество процессов
 			},
 			// Сброс всех привилегий
 			CapDrop: []string{"ALL"},
@@ -91,34 +90,36 @@ func (d *DockerClient) CreateContainer(ctx context.Context, code, language strin
 		},
 		nil, nil, "")
 	if err != nil {
-		return "", fmt.Errorf("failed to create container: %w", err)
+		return resp.ID, fmt.Errorf("failed to create container: %w", err)
 	}
 
 	// Start container
 	if err := d.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return "", fmt.Errorf("failed to start container: %w", err)
+		return resp.ID, fmt.Errorf("failed to start container: %w", err)
 	}
 
-	// В функции CreateContainer
-	destPath := filepath.Join("/workspace", srcFilename)
-	if err := d.writeFileToContainer(ctx, resp.ID, code, destPath); err != nil {
-		return "", fmt.Errorf("failed to write code to container: %w", err)
+	if err := d.writeFileToContainer(ctx, resp.ID, code, srcFilename); err != nil {
+		return resp.ID, fmt.Errorf("failed to write code to container: %w", err)
 	}
 
 	// Проверяем, что файл создался правильно
-	_, _, err = d.execCommand(ctx, resp.ID, fmt.Sprintf("ls -la /workspace/%s && cat /workspace/%s", srcFilename, srcFilename))
+	stdout, stderr, err := d.execCommand(ctx, resp.ID, fmt.Sprintf("ls -la /workspace/%s && cat /workspace/%s", srcFilename, srcFilename))
+	if stderr.Len() > 0 {
+		d.logger.Debug("file check error", zap.String("stdout", stdout.String()), zap.String("stderr", stderr.String()))
+		return resp.ID, fmt.Errorf("failed to check file: %s", stderr.String())
+	}
 	if err != nil {
-		return "", fmt.Errorf("failed to check file: %w", err)
+		return resp.ID, fmt.Errorf("failed to check file: %w", err)
 	}
 
 	if compileCmd != "" {
-		stdout, stderr, err := d.execCommand(ctx, resp.ID, compileCmd)
+		stdout, stderr, err = d.execCommand(ctx, resp.ID, compileCmd)
 		if stderr.Len() > 0 {
 			d.logger.Debug("compilation error", zap.String("stdout", stdout.String()), zap.String("stderr", stderr.String()))
-			return "", ErrCompilationFailed
+			return resp.ID, ErrCompilationFailed
 		}
 		if err != nil {
-			return "", err
+			return resp.ID, err
 		}
 	}
 
@@ -155,7 +156,7 @@ func (d *DockerClient) execCommand(ctx context.Context, containerID, cmd string)
 func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language string, testCases []TestCase) (bool, []TestCaseResult, SolutionResultDetails, error) {
 	var (
 		failedTests []TestCaseResult
-		avgMemoryKB uint64
+		avgMemoryKB float64
 		avgTimeMS   float64
 	)
 	isAllPassed := true
@@ -169,7 +170,7 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 		switch language {
 		case "python":
 			cmd = []string{"python3", "/workspace/solution.py"}
-		case "c++":
+		case "cpp":
 			cmd = []string{"/workspace/solution"}
 		case "java":
 			cmd = []string{"java", "-cp", "/workspace", "Solution"}
@@ -178,21 +179,20 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 			return false, nil, SolutionResultDetails{}, fmt.Errorf("unsupported language: %s", language)
 		}
 
-		// Take initial memory snapshot before execution
-		initialStats, err := d.client.ContainerStatsOneShot(ctx, containerID)
-		if err != nil {
-			return false, nil, SolutionResultDetails{}, fmt.Errorf("failed to get initial stats: %w", err)
+		// Get initial memory usage from cgroups
+		initialMemOut, errinitbuf, err := d.execCommand(ctx, containerID, "cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null || echo 0")
+		if errinitbuf.Len() > 0 || err != nil {
+			d.logger.Debug("failed to get initial memory", zap.String("stderr", errinitbuf.String()), zap.Error(err))
+			return false, nil, SolutionResultDetails{}, fmt.Errorf("failed to get initial memory")
 		}
 
-		var initialStatsJSON container.StatsResponse
-		if err := json.NewDecoder(initialStats.Body).Decode(&initialStatsJSON); err != nil {
-			initialStats.Body.Close()
-			return false, nil, SolutionResultDetails{}, fmt.Errorf("failed to decode initial stats: %w", err)
+		initialMemStr := strings.TrimSpace(initialMemOut.String())
+		baseMemoryKB := float64(0)
+		if initialMemStr != "" && initialMemStr != "0" {
+			if initialMem, err := strconv.ParseUint(initialMemStr, 10, 64); err == nil {
+				baseMemoryKB = float64(initialMem) / 1024.0 // bytes to KB
+			}
 		}
-		initialStats.Body.Close()
-
-		baseMemoryKB := initialStatsJSON.MemoryStats.Usage / 1024
-		d.logger.Debug("initial memory usage", zap.Uint64("base_memory_kb", baseMemoryKB))
 
 		peakMemoryKB := baseMemoryKB
 
@@ -249,16 +249,18 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 		executionTime := float64(time.Since(startTime).Microseconds()) / 1000.0
 
 		memOut, errtestbuf, err := d.execCommand(ctx, containerID, "cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null || echo 0")
-		fmt.Println(errtestbuf.String(), err)
+		if errtestbuf.Len() > 0 || err != nil {
+			d.logger.Debug("failed to get peak memory", zap.String("stderr", errtestbuf.String()), zap.Error(err))
+			return false, nil, SolutionResultDetails{}, fmt.Errorf("failed to get peak memory")
+		}
 		memStr := strings.TrimSpace(memOut.String())
 		if memStr != "" && memStr != "0" {
 			if peakMem, err := strconv.ParseUint(memStr, 10, 64); err == nil {
-				peakMemoryKB = peakMem / 1024 // bytes to KB
-				d.logger.Debug("memory usage detected via cgroups", zap.Uint64("peak_memory_kb", peakMemoryKB))
+				peakMemoryKB = float64(peakMem) / 1024 // bytes to KB
 			}
 		}
 
-		d.logger.Debug("execution completed", zap.Uint64("peak_memory_kb", peakMemoryKB))
+		d.logger.Debug("execution completed", zap.Int("testcase_id", tc.ID), zap.String("container_id", containerID), zap.Float64("peak_memory_kb", peakMemoryKB), zap.Float64("base_memory_kb", baseMemoryKB), zap.Float64("execution_time_ms", executionTime))
 
 		peakMemoryKB = peakMemoryKB - baseMemoryKB
 
@@ -279,20 +281,22 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 
 	// Calculate average metrics
 	if len(testCases) > 0 {
-		avgMemoryKB /= uint64(len(testCases))
+		avgMemoryKB /= float64(len(testCases))
 		avgTimeMS /= float64(len(testCases))
 	}
+
+	avgTimeMS = math.Round(avgTimeMS*100) / 100
 
 	return isAllPassed, failedTests, SolutionResultDetails{AverageTime: avgTimeMS, AverageMemory: avgMemoryKB}, nil
 }
 
 // Безопасный метод записи файла через exec, работающий с любой конфигурацией
-func (d *DockerClient) writeFileToContainer(ctx context.Context, containerID, content, filePath string) error {
+func (d *DockerClient) writeFileToContainer(ctx context.Context, containerID, content, fileName string) error {
 	// Создаем временный файл для кода в безопасном формате (base64)
 	encodedContent := base64.StdEncoding.EncodeToString([]byte(content))
 
 	// Пишем закодированную строку в файл через echo
-	cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encodedContent, filePath)
+	cmd := fmt.Sprintf("echo '%s' | base64 -d > %s", encodedContent, fileName)
 	_, _, err := d.execCommand(ctx, containerID, cmd)
 	if err != nil {
 		return fmt.Errorf("failed to write file: %w", err)

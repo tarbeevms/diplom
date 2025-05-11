@@ -10,5 +10,21 @@
             "username": "root",
             "password": "root"
         }
-    ]
+    ],
+    "css.validate": false,
+    "scss.validate": false,
+    "less.validate": false,
+    // then enable tailwind validation
+    "editor.quickSuggestions": { "strings": true },
+    "tailwindCSS.includeLanguages": {
+      "plaintext": "html",
+      "javascript": "javascript",
+      "typescript": "javascript",
+      "javascriptreact": "html",
+      "typescriptreact": "html",
+      "css": "css",
+      "postcss": "css",
+      "vue": "html",
+      "svelte": "html"
+    }
 }

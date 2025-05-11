@@ -3,6 +3,9 @@ package application
 import (
 	"diplom/internal/controllers"
 	"diplom/internal/middleware"
+	"time"
+
+	"github.com/gin-contrib/cors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,6 +13,16 @@ import (
 // NewRouter инициализирует маршруты и возвращает настроенный роутер
 func (app *Application) InitServer() {
 	router := gin.Default()
+
+	// Добавляем CORS middleware
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	authGroup := router.Group("/api/auth")
 	{
@@ -34,9 +47,16 @@ func (app *Application) InitServer() {
 	admin.Use(middleware.AuthMiddleware(app.Handlers.AuthService), middleware.RoleMiddleware("admin"))
 	{
 		admin.GET("/dashboard", controllers.AdminDashboardHandler)
-	}
 
-	// Дополнительные группы (например, для задач, сабмишенов и т.д.) можно добавить здесь
+		admin.POST("/problem", app.Handlers.CreateProblemHandler)
+		admin.POST("/problem/:uuid/testcase", app.Handlers.AddTestcaseHandler)
+
+		admin.GET("/problems", app.Handlers.GetAllProblemsHandler)
+		admin.GET("/problem/:uuid/testcases", app.Handlers.GetProblemTestcasesHandler)
+
+		admin.DELETE("/testcase/:id", app.Handlers.DeleteTestcaseHandler)
+		admin.DELETE("/problem/:uuid", app.Handlers.DeleteProblemHandler)
+	}
 
 	app.Server = router
 }

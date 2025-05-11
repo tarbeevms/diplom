@@ -1,15 +1,12 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
-	"diplom/config"
 	"diplom/internal/auth"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 )
 
 // AuthMiddleware проверяет наличие и валидность JWT-токена
@@ -28,24 +25,14 @@ func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		claims := &auth.Claims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(config.CFG.SecretKey), nil
-		})
-		if err != nil || !token.Valid {
-			fmt.Println(err)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Неверный или просроченный токен"})
-			return
-		}
 
 		// Проверяем авторизацию и существование сессии в базе данных, не просрочена ли она
-		authorized, err := a.IsAuthorized(token, claims)
+		authorized, claims, err := a.IsAuthorized(tokenString)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Не авторизован: " + err.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Not authorized: " + err.Error()})
 			return
 		} else if !authorized {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Не авторизован"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Not authorized"})
 			return
 		}
 

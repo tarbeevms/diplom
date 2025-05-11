@@ -26,7 +26,7 @@ func PgConnFromCFG() (*sql.DB, error) {
 	for i := 0; i < maxRetries; i++ {
 		db, err = sql.Open("postgres", dsn)
 		if err != nil {
-			log.Printf("Failed to connect to PostgreSQL (attempt %d/%d): %v, %s", i+1, maxRetries, err, dsn)
+			log.Printf("Failed to connect to PostgreSQL (attempt %d/%d): %s, %s", i+1, maxRetries, err.Error(), dsn)
 			time.Sleep(retryDelay)
 			continue
 		}
@@ -34,7 +34,7 @@ func PgConnFromCFG() (*sql.DB, error) {
 		db.SetMaxOpenConns(10)
 
 		if err := db.Ping(); err != nil {
-			log.Printf("Failed to ping PostgreSQL DB (attempt %d/%d): %v, %s", i+1, maxRetries, err, dsn)
+			log.Printf("Failed to ping PostgreSQL DB (attempt %d/%d): %s, %s", i+1, maxRetries, err.Error(), dsn)
 			db.Close()
 			time.Sleep(retryDelay)
 			continue
