@@ -154,8 +154,7 @@ func (h *Handlers) DeleteProblemHandler(c *gin.Context) {
 
 	testcases, err := h.ProblemService.ProblemRepo.GetTestCasesByProblemUUID(problem.UUID)
 	if errors.Is(err, problems.ErrTestCasesNotFound) {
-		c.JSON(http.StatusNotFound, testcases)
-		return
+		h.Logger.Error("test cases not found", zap.Error(err))
 	} else if err != nil {
 		h.Logger.Error("failed to get test cases", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get test cases"})

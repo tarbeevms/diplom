@@ -2,11 +2,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Button } from '@/components/ui/button'
-import { ListTodo } from 'lucide-react'
+import { ListTodo, Shield } from 'lucide-react'
 
 export default function Header() {
-  const { token, logout } = useAuth()       // token и logout гарантированно существуют
-  const navigate = useNavigate()            // добавили хук
+  const { token, logout, isAdmin } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur-sm shadow-md z-10">
@@ -22,6 +22,15 @@ export default function Header() {
               <Button variant="sexy" onClick={() => navigate('/dashboard')}>
                 Dashboard
               </Button>
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 flex items-center gap-2"
+                  onClick={() => navigate('/admin')}
+                >
+                  <Shield className="h-4 w-4" />
+                </Button>
+              )}
               <Button variant="outline" onClick={logout}>
                 Logout
               </Button>

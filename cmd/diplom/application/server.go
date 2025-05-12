@@ -35,6 +35,7 @@ func (app *Application) InitServer() {
 	protected.Use(middleware.AuthMiddleware(app.Handlers.AuthService))
 	{
 		protected.GET("/profile", controllers.ProfileHandler)
+		protected.GET("/problems", app.Handlers.GetAllProblemsHandler)
 		problems := protected.Group("/problem")
 		{
 			problems.GET("/:uuid", app.Handlers.GetProblemHandler)
@@ -51,7 +52,6 @@ func (app *Application) InitServer() {
 		admin.POST("/problem", app.Handlers.CreateProblemHandler)
 		admin.POST("/problem/:uuid/testcase", app.Handlers.AddTestcaseHandler)
 
-		admin.GET("/problems", app.Handlers.GetAllProblemsHandler)
 		admin.GET("/problem/:uuid/testcases", app.Handlers.GetProblemTestcasesHandler)
 
 		admin.DELETE("/testcase/:id", app.Handlers.DeleteTestcaseHandler)

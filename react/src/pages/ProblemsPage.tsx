@@ -35,7 +35,7 @@ export default function ProblemsPage() {
   const visible = problems.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(query.toLowerCase()) || 
-      (p.uuid && p.uuid.toString().includes(query))
+      (p.uuid && p.uuid.toLowerCase().includes(query.toLowerCase()))
     const matchesFilter = filter ? p.difficulty === filter : true
     return matchesSearch && matchesFilter
   })
@@ -90,7 +90,7 @@ export default function ProblemsPage() {
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
             <Input
-              placeholder="Search by name or ID..."
+              placeholder="Search by name or UUID..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-10"

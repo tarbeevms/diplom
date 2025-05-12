@@ -5,7 +5,11 @@ module.exports = {
   theme: {
     extend: {
       boxShadow: { '3xl': '0 25px 50px -12px rgba(0,0,0,0.25)' },
-      fontFamily: { inter: ['"Inter"', 'sans-serif'] },
+      fontFamily: { 
+        roboto: ['"Roboto"', 'sans-serif'],
+        inter: ['"Inter"', 'sans-serif'],
+        jetbrains: ['"JetBrains Mono"', 'monospace'] 
+      },
       colors: {
         purple: { 400: '#A78BFA' },
         pink:   { 500: '#EC4899' },

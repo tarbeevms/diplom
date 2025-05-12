@@ -27,6 +27,7 @@ var (
 )
 
 type Problem struct {
+	ID          int    `json:"id"`
 	UUID        string `json:"uuid"`
 	Name        string `json:"name"`
 	Difficulty  string `json:"difficulty"`

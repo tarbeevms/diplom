@@ -16,13 +16,16 @@ export default function ProblemCard({ problem, index }: ProblemCardProps) {
     hard: 'bg-red-100 text-red-800',
   }[problem.difficulty]
 
+  // Используем problem.id вместо index, если доступно
+  const displayId = problem.id !== undefined ? problem.id : index
+
   return (
     <Link to={`/problem/${problem.uuid}`}>
       <Card className="transform hover:scale-105 transition-transform duration-300 shadow-md hover:shadow-xl h-full">
         <CardContent className="p-5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-gray-500 font-semibold">{`#${index}`}</span>
+              <span className="font-mono text-gray-500 font-semibold">{`#${displayId}`}</span>
               <h3 className="font-semibold text-lg line-clamp-1">{problem.name}</h3>
             </div>
             <span className={`px-2 py-0.5 rounded-full text-sm font-medium ${badgeClasses}`}>

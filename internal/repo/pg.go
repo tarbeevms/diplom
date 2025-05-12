@@ -75,10 +75,10 @@ func (sr *PGClient) AddUser(username, hashedPassword, role string) error {
 }
 
 func (sr *PGClient) GetProblemByUUID(uuid string) (*problems.Problem, error) {
-	query := "SELECT uuid, name, difficulty, description FROM problems WHERE uuid = $1 LIMIT 1"
+	query := "SELECT id, uuid, name, difficulty, description FROM problems WHERE uuid = $1 LIMIT 1"
 	row := sr.db.QueryRow(query, uuid)
 	var problem problems.Problem
-	err := row.Scan(&problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description)
+	err := row.Scan(&problem.ID, &problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, problems.ErrProblemNotFound
 	}
@@ -128,7 +128,7 @@ func (sr *PGClient) AddTestcase(problemUUID, input, output string) error {
 }
 
 func (sr *PGClient) GetAllProblems() ([]problems.Problem, error) {
-	query := "SELECT uuid, name, difficulty, description FROM problems"
+	query := "SELECT id, uuid, name, difficulty, description FROM problems"
 	rows, err := sr.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (sr *PGClient) GetAllProblems() ([]problems.Problem, error) {
 	problemList := []problems.Problem{}
 	for rows.Next() {
 		var problem problems.Problem
-		if err := rows.Scan(&problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description); err != nil {
+		if err := rows.Scan(&problem.ID, &problem.UUID, &problem.Name, &problem.Difficulty, &problem.Description); err != nil {
 			return nil, err
 		}
 		problemList = append(problemList, problem)

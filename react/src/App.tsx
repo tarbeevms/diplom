@@ -7,11 +7,20 @@ import SignUpPage from "./pages/SignUpPage";
 import ProblemsPage from "./pages/ProblemsPage";
 import ProblemPage from "./pages/ProblemPage";
 import DashboardPage from "./pages/DashboardPage";
+import AdminPage from "./pages/AdminPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   if (!auth) return <Navigate to="/login" replace />;
   return auth.token ? children : <Navigate to="/login" replace />;
+}
+
+// Route that requires admin privileges
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
+  if (!auth || !auth.token) return <Navigate to="/login" replace />;
+  return auth.isAdmin ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {
@@ -46,6 +55,14 @@ export default function App() {
                 <PrivateRoute>
                   <DashboardPage />
                 </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
               }
             />
           </Routes>
