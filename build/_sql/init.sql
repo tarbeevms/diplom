@@ -59,10 +59,9 @@ CREATE TABLE solutions (
     problem_uuid VARCHAR(255) NOT NULL,
     execution_time_ms FLOAT NOT NULL,
     memory_usage_kb BIGINT NOT NULL,
-    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    code TEXT NOT NULL,
+    language VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    -- Foreign key constraints
     FOREIGN KEY (user_id) REFERENCES users (uuid) ON DELETE CASCADE,
     FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE,
     

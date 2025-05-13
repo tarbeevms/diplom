@@ -20,7 +20,7 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         sexy:
-          "bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md border border-blue-700",
+          "w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md border border-blue-700",
           link: "text-primary underline-offset-4 hover:underline",
         runCode: "bg-green-500 text-white shadow-md hover:bg-green-600 flex items-center justify-center",
       },

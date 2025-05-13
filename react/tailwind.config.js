@@ -13,6 +13,7 @@ module.exports = {
       padding: "2rem",
       screens: {
         "2xl": "1400px",
+        'xs': '480px',
       },
     },
     extend: {
@@ -104,6 +105,35 @@ module.exports = {
         'slide-in-left': 'slide-in-left 0.3s ease-out forwards',
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
       },
+      typography: (theme) => ({
+        DEFAULT: {
+          css: {
+            maxWidth: '100%',
+            code: {
+              backgroundColor: theme('colors.gray.100'),
+              borderRadius: '0.2rem',
+              paddingLeft: '0.25rem',
+              paddingRight: '0.25rem',
+              paddingTop: '0.1rem',
+              paddingBottom: '0.1rem',
+              fontWeight: '400',
+            },
+            'code::before': {
+              content: '""',
+            },
+            'code::after': {
+              content: '""',
+            },
+          },
+        },
+        sm: {
+          css: {
+            code: {
+              fontSize: '0.9em',
+            },
+          },
+        },
+      }),
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -34,7 +34,7 @@ func (app *Application) InitServer() {
 	protected := router.Group("/api")
 	protected.Use(middleware.AuthMiddleware(app.Handlers.AuthService))
 	{
-		protected.GET("/profile", controllers.ProfileHandler)
+		protected.GET("/profile", app.Handlers.ProfileHandler)
 		protected.GET("/problems", app.Handlers.GetAllProblemsHandler)
 		problems := protected.Group("/problem")
 		{

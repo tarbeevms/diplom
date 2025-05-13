@@ -6,4 +6,11 @@ export interface Problem {
   difficulty: 'easy' | 'medium' | 'hard'
   description: string
   solved?: boolean
+  solution?: {
+    average_time_ms: number
+    average_memory_kb: number
+    created_at: string
+    code: string
+    language: string
+  }
 }

@@ -93,7 +93,7 @@ const TestCasesDialog = ({
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            Test Cases: {problemName}
+            Тесты: {problemName}
           </h2>
           <button 
             onClick={onClose} 
@@ -107,13 +107,13 @@ const TestCasesDialog = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
           <div className="bg-white rounded-lg border border-purple-100 shadow-sm">
             <div className="px-5 py-4 border-b border-purple-100 bg-purple-50 rounded-t-lg">
-              <h3 className="font-medium text-purple-800">Add New Test Case</h3>
+              <h3 className="font-medium text-purple-800">Добавить новый тест</h3>
             </div>
             
             <form onSubmit={handleSubmit} className="p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="input" className="block text-sm font-medium text-gray-700">Input</label>
+                  <label htmlFor="input" className="block text-sm font-medium text-gray-700">Входные данные</label>
                   <div className="relative">
                     <textarea
                       id="input"
@@ -121,7 +121,7 @@ const TestCasesDialog = ({
                       onChange={(e) => setNewTestCase({...newTestCase, input: e.target.value})}
                       required
                       className="w-full h-40 min-h-[10rem] resize-y px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
-                      placeholder="Enter test case input"
+                      placeholder="Введите входные данные для теста"
                     ></textarea>
                     {newTestCase.input && (
                       <button 
@@ -136,7 +136,7 @@ const TestCasesDialog = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <label htmlFor="output" className="block text-sm font-medium text-gray-700">Expected Output</label>
+                  <label htmlFor="output" className="block text-sm font-medium text-gray-700">Ожидаемый результат</label>
                   <div className="relative">
                     <textarea
                       id="output"
@@ -144,7 +144,7 @@ const TestCasesDialog = ({
                       onChange={(e) => setNewTestCase({...newTestCase, output: e.target.value})}
                       required
                       className="w-full h-40 min-h-[10rem] resize-y px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
-                      placeholder="Enter expected output"
+                      placeholder="Введите ожидаемый результат"
                     ></textarea>
                     {newTestCase.output && (
                       <button 
@@ -166,7 +166,7 @@ const TestCasesDialog = ({
                   className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white flex items-center gap-2"
                 >
                   {loading ? <ReloadIcon className="animate-spin h-4 w-4" /> : <PlusIcon className="h-4 w-4" />}
-                  Add Test Case
+                  Добавить тест
                 </Button>
               </div>
             </form>
@@ -179,16 +179,17 @@ const TestCasesDialog = ({
                   <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                   <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                 </svg>
-                Existing Test Cases
+                Существующие тесты
               </h3>
               <span className="text-sm text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-medium">
-                {testCases.length} {testCases.length === 1 ? 'test case' : 'test cases'}
+                {testCases.length} {testCases.length === 1 ? 'тест' : 
+                  testCases.length >= 2 && testCases.length <= 4 ? 'теста' : 'тестов'}
               </span>
             </div>
 
             {testCases.length === 0 ? (
               <div className="text-center py-10 border rounded-lg border-dashed border-gray-300 bg-gray-50">
-                <p className="text-gray-500">No test cases found for this problem.</p>
+                <p className="text-gray-500">Для этой задачи пока нет тестов.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -205,7 +206,7 @@ const TestCasesDialog = ({
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-purple-700" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                         </svg>
-                        Test Case #{index + 1}
+                        Тест #{index + 1}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">ID: {formatId(testCase.id)}</span>
@@ -225,10 +226,10 @@ const TestCasesDialog = ({
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                           </svg>
-                          Input
+                          Входные данные
                         </h4>
                         <pre className="whitespace-pre-wrap bg-gray-50 p-3 rounded-md text-sm overflow-x-auto border text-gray-800 max-h-60 font-mono">
-                          {testCase.input || <span className="text-gray-400 italic">Empty input</span>}
+                          {testCase.input || <span className="text-gray-400 italic">Пустые входные данные</span>}
                         </pre>
                       </div>
                       <div className="p-4">
@@ -236,10 +237,10 @@ const TestCasesDialog = ({
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
-                          Expected Output
+                          Ожидаемый результат
                         </h4>
                         <pre className="whitespace-pre-wrap bg-gray-50 p-3 rounded-md text-sm overflow-x-auto border text-gray-800 max-h-60 font-mono">
-                          {testCase.output || <span className="text-gray-400 italic">Empty output</span>}
+                          {testCase.output || <span className="text-gray-400 italic">Пустой результат</span>}
                         </pre>
                       </div>
                     </div>
@@ -258,7 +259,7 @@ const TestCasesDialog = ({
               onClick={onClose}
               className="px-5"
             >
-              Close
+              Закрыть
             </Button>
           </div>
         </div>
@@ -290,22 +291,39 @@ export default function AdminPage() {
   };
   
   // Handle selection of a problem and load its test cases
-  const handleSelectProblem = async (problem: Problem) => {
-    if (!token) return;
+const handleSelectProblem = async (problem: Problem) => {
+  if (!token) return;
+  
+  setSelectedProblem(problem);
+  setLoading(true);
+  
+  try {
+    const testCases = await getTestCases(problem.uuid, token);
     
-    setSelectedProblem(problem);
-    setLoading(true);
-    
-    try {
-      const testCases = await getTestCases(problem.uuid, token);
-      setTestCases(Array.isArray(testCases) ? testCases : []);
-      setTestCaseDialogOpen(true);
-    } catch (error: any) {
-      toast.error(`Failed to load test cases: ${error.message}`);
-    } finally {
-      setLoading(false);
+    // Handle empty array or null/undefined properly
+    // This ensures we always store a valid array in state
+    if (Array.isArray(testCases)) {
+      setTestCases(testCases);
+    } else if (testCases === null || testCases === undefined) {
+      // If API returns null or undefined, use empty array
+      setTestCases([]);
+    } else {
+      // In case API returns something else unexpected
+      console.warn("Unexpected test cases format:", testCases);
+      setTestCases([]);
     }
-  };
+    
+    // Open the dialog regardless of whether tests exist
+    setTestCaseDialogOpen(true);
+  } catch (error: any) {
+    // More specific error handling
+    const errorMessage = error.message || "Неизвестная ошибка";
+    toast.error(`Не удалось загрузить тесты: ${errorMessage}`);
+    console.error("Error loading test cases:", error);
+  } finally {
+    setLoading(false);
+  }
+};
   
   // Load all problems when component mounts
   useEffect(() => {
@@ -314,7 +332,7 @@ export default function AdminPage() {
     setLoading(true);
     getProblems(token)
       .then(setProblems)
-      .catch(error => toast.error(`Failed to load problems: ${error.message}`))
+      .catch(error => toast.error(`Не удалось загрузить задачи: ${error.message}`))
       .finally(() => setLoading(false));
   }, [token]);
   
@@ -325,37 +343,57 @@ export default function AdminPage() {
     
     setLoading(true);
     try {
-      const problem = await createProblem(newProblem, token);
-      setProblems([...problems, problem]);
+      const response = await createProblem(newProblem, token);
+      
+      // Ensure the response is properly structured before adding to state
+      const newProblemWithName = {
+        ...response,
+        name: response.name || newProblem.name, // Use form name if API response name is missing
+        difficulty: response.difficulty || newProblem.difficulty,
+        description: response.description || newProblem.description
+      };
+      
+      // Add to problems array with verified structure
+      setProblems([...problems, newProblemWithName]);
+      
       setNewProblem({ name: '', difficulty: 'easy', description: '' });
-      toast.success('Problem created successfully!');
+      toast.success('Задача успешно создана!');
       setActiveTab('problems');
     } catch (error: any) {
-      toast.error(`Failed to create problem: ${error.message}`);
+      toast.error(`Не удалось создать задачу: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
   
-  // Handle adding a new test case
-  const handleAddTestCase = async (input: string, output: string) => {
-    if (!token || !selectedProblem) return;
+// Handle adding a new test case
+const handleAddTestCase = async (input: string, output: string) => {
+  if (!token || !selectedProblem) return;
+  
+  setLoading(true);
+  try {
+    const testCase = await addTestCase(selectedProblem.uuid, { input, output }, token);
     
-    setLoading(true);
-    try {
-      const testCase = await addTestCase(selectedProblem.uuid, { input, output }, token);
-      setTestCases([...testCases, testCase]);
-      toast.success('Test case added successfully!');
-    } catch (error: any) {
-      toast.error(`Failed to add test case: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Create a complete test case object by merging the returned data with our input data
+    const completeTestCase = {
+      ...testCase,
+      input: testCase.input || input,    // Use API response or fallback to our input
+      output: testCase.output || output, // Use API response or fallback to our output
+      problem_uuid: selectedProblem.uuid  // Ensure problem_uuid is set
+    };
+    
+    setTestCases([...testCases, completeTestCase]);
+    toast.success('Тест успешно добавлен!');
+  } catch (error: any) {
+    toast.error(`Не удалось добавить тест: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
   
   // Handle deleting a problem
   const handleDeleteProblem = async (problem: Problem) => {
-    if (!token || !window.confirm(`Are you sure you want to delete "${problem.name}"?`)) return;
+    if (!token || !window.confirm(`Вы уверены, что хотите удалить задачу "${problem.name}"?`)) return;
     
     setLoading(true);
     try {
@@ -365,9 +403,9 @@ export default function AdminPage() {
         setSelectedProblem(null);
         setTestCases([]);
       }
-      toast.success('Problem deleted successfully!');
+      toast.success('Задача успешно удалена!');
     } catch (error: any) {
-      toast.error(`Failed to delete problem: ${error.message}`);
+      toast.error(`Не удалось удалить задачу: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -375,16 +413,16 @@ export default function AdminPage() {
   
   // Handle deleting a test case
   const handleDeleteTestCase = async (testCaseId: string | number) => {
-    if (!token || !window.confirm('Are you sure you want to delete this test case?')) return;
+    if (!token || !window.confirm('Вы уверены, что хотите удалить этот тест?')) return;
     
     setLoading(true);
     try {
       // Convert testCaseId to string to match the expected parameter type
       await deleteTestCase(String(testCaseId), token);
       setTestCases(testCases.filter(tc => tc.id !== testCaseId));
-      toast.success('Test case deleted successfully!');
+      toast.success('Тест успешно удален!');
     } catch (error: any) {
-      toast.error(`Failed to delete test case: ${error.message}`);
+      toast.error(`Не удалось удалить тест: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -402,19 +440,19 @@ export default function AdminPage() {
         <div className="flex items-center space-x-1 text-sm text-indigo-100 mb-2">
           <Link to="/" className="hover:text-white flex items-center">
             <HomeIcon className="w-3.5 h-3.5 mr-1" />
-            <span>Home</span>
+            <span>Главная</span>
           </Link>
           <ChevronRightIcon className="w-3 h-3" />
-          <span className="font-medium">Admin</span>
+          <span className="font-medium">Админ</span>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold flex items-center">
             <DashboardIcon className="w-7 h-7 mr-3" />
-            Admin Dashboard
+            Панель администратора
           </h1>
           <div className="flex items-center gap-3">
             <div className="text-xs bg-indigo-800 bg-opacity-50 px-3 py-1 rounded-full">
-              Total Problems: {problems.length}
+              Всего задач: {problems.length}
             </div>
           </div>
         </div>
@@ -427,13 +465,13 @@ export default function AdminPage() {
             value="problems" 
             className="flex-1 py-2.5 font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
           >
-            Problems
+            Задачи
           </TabsTrigger>
           <TabsTrigger 
             value="create" 
             className="flex-1 py-2.5 font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
           >
-            Create Problem
+            Создать задачу
           </TabsTrigger>
         </TabsList>
         
@@ -447,7 +485,6 @@ export default function AdminPage() {
               transition={{ duration: 0.3 }}
             >
               <Card className="border shadow-lg overflow-hidden">
-                {/* Fixed card header background fill */}
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center">
@@ -455,7 +492,7 @@ export default function AdminPage() {
                         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                         <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                       </svg>
-                      Manage Problems
+                      Управление задачами
                     </span>
                     {loading && <ReloadIcon className="animate-spin h-5 w-5 text-blue-500" />}
                   </CardTitle>
@@ -468,12 +505,12 @@ export default function AdminPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                       </div>
-                      <p className="text-gray-500 mb-6">No problems found in the system.</p>
+                      <p className="text-gray-500 mb-6">В системе пока нет задач.</p>
                       <Button 
                         onClick={() => setActiveTab('create')}
                         className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
                       >
-                        Create Your First Problem
+                        Создать первую задачу
                       </Button>
                     </div>
                   ) : (
@@ -503,7 +540,7 @@ export default function AdminPage() {
                                   problem.difficulty === 'easy' ? 'text-green-700' :
                                   problem.difficulty === 'medium' ? 'text-yellow-700' : 'text-red-700'
                                 }`}>
-                                  {problem.difficulty}
+                                  {problem.difficulty === 'easy' ? 'Легкая' : problem.difficulty === 'medium' ? 'Средняя' : 'Сложная'}
                                 </span>
                               </div>
                               
@@ -525,7 +562,7 @@ export default function AdminPage() {
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                               </svg>
-                              Test Cases
+                              Тесты
                             </Button>
                             <Button 
                               variant="outline" 
@@ -534,7 +571,7 @@ export default function AdminPage() {
                               className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 flex items-center gap-1.5 transition-all"
                             >
                               <TrashIcon className="h-4 w-4" />
-                              Delete
+                              Удалить
                             </Button>
                           </div>
                         </motion.div>
@@ -563,7 +600,7 @@ export default function AdminPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                       </svg>
-                      Create New Problem
+                      Создать новую задачу
                     </span>
                     {loading && <ReloadIcon className="animate-spin h-5 w-5 text-emerald-500" />}
                   </CardTitle>
@@ -572,31 +609,20 @@ export default function AdminPage() {
                   <form onSubmit={handleAddProblem} className="space-y-6">
                     <div className="space-y-6">
                       <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Problem Name</label>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Название задачи</label>
                         <Input
                           id="name"
                           value={newProblem.name}
                           onChange={(e) => setNewProblem({...newProblem, name: e.target.value})}
                           required
-                          placeholder="Enter problem name"
+                          placeholder="Введите название задачи"
                           className="shadow-sm"
                         />
                       </div>
                       
                       <div>
-                        <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">Difficulty Level</label>
+                        <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">Уровень сложности</label>
                         <div className="relative">
-                          <select
-                            id="difficulty"
-                            value={newProblem.difficulty}
-                            onChange={(e) => setNewProblem({...newProblem, difficulty: e.target.value})}
-                            required
-                            className="w-full h-10 pl-3 pr-10 py-2 border rounded-md appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          >
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                          </select>
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                             <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -611,7 +637,7 @@ export default function AdminPage() {
                             onClick={() => setNewProblem({...newProblem, difficulty: 'easy'})}
                           >
                             <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            <span>Easy</span>
+                            <span>Легкая</span>
                           </div>
                           <div 
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer ${
@@ -620,7 +646,7 @@ export default function AdminPage() {
                             onClick={() => setNewProblem({...newProblem, difficulty: 'medium'})}
                           >
                             <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                            <span>Medium</span>
+                            <span>Средняя</span>
                           </div>
                           <div 
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer ${
@@ -629,34 +655,34 @@ export default function AdminPage() {
                             onClick={() => setNewProblem({...newProblem, difficulty: 'hard'})}
                           >
                             <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                            <span>Hard</span>
+                            <span>Сложная</span>
                           </div>
                         </div>
                       </div>
                       
                       <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description (HTML)</label>
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Описание (HTML)</label>
                         <textarea
                           id="description"
                           value={newProblem.description}
                           onChange={(e) => setNewProblem({...newProblem, description: e.target.value})}
                           required
                           className="w-full h-60 min-h-[15rem] resize-y px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono shadow-sm"
-                          placeholder="Enter problem description in HTML format"
+                          placeholder="Введите описание задачи в формате HTML"
                         ></textarea>
                         <div className="bg-yellow-50 rounded-md p-3 mt-2 border border-yellow-200 flex items-start">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
                           <div className="text-xs text-yellow-800">
-                            <p className="font-medium mb-1">HTML formatting is supported:</p>
-                            <ul className="space-y-1 list-disc list-inside">
-                              <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;h1&gt;Title&lt;/h1&gt;</code> - For headings</li>
-                              <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;p&gt;Paragraph&lt;/p&gt;</code> - For paragraphs</li>
-                              <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;code&gt;Code&lt;/code&gt;</code> - For inline code</li>
-                              <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;pre&gt;Code block&lt;/pre&gt;</code> - For code blocks</li>
-                              <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;ul&gt;&lt;li&gt;List item&lt;/li&gt;&lt;/ul&gt;</code> - For lists</li>
-                            </ul>
+                          <p className="font-medium mb-1">Поддерживается HTML форматирование:</p>
+                          <ul className="space-y-1 list-disc list-inside">
+                            <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;h1&gt;Заголовок&lt;/h1&gt;</code> - Для заголовков</li>
+                            <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;p&gt;Абзац&lt;/p&gt;</code> - Для абзацев</li>
+                            <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;code&gt;Код&lt;/code&gt;</code> - Для встроенного кода</li>
+                            <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;pre&gt;Блок кода&lt;/pre&gt;</code> - Для блоков кода</li>
+                            <li><code className="bg-yellow-100 px-1 py-0.5 rounded">&lt;ul&gt;&lt;li&gt;Элемент списка&lt;/li&gt;&lt;/ul&gt;</code> - Для списков</li>
+                          </ul>
                           </div>
                         </div>
                       </div>
@@ -669,7 +695,7 @@ export default function AdminPage() {
                         className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white py-3 text-base shadow-md"
                       >
                         {loading ? <ReloadIcon className="animate-spin h-5 w-5 mr-2" /> : <PlusIcon className="h-5 w-5 mr-2" />}
-                        Create Problem
+                        Создать задачу
                       </Button>
                     </div>
                   </form>

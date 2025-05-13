@@ -55,6 +55,17 @@ func (h *Handlers) SignupHandler(c *gin.Context) {
 		return
 	}
 
+	exists, err := h.AuthService.SessionRepo.IsUserExists(req.Username)
+	if err != nil {
+		h.AuthService.Logger.Error("error checking if user exists", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user existence"})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
+		return
+	}
+
 	// Hash the password
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {

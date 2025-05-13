@@ -5,14 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { Button } from '@/components/ui/button'
 import Editor from '@monaco-editor/react'
 import { toast } from 'sonner'
-import { ReloadIcon, CheckIcon, CrossCircledIcon, CodeIcon, FileTextIcon } from '@radix-ui/react-icons'
+import { ReloadIcon, CheckIcon, CrossCircledIcon, CodeIcon, FileTextIcon, ExclamationTriangleIcon } from '@radix-ui/react-icons'
 import type { Problem } from '@/lib/types'
 
 // Вынесенные константы для соотношений элементов интерфейса
 const LAYOUT_CONSTANTS = {
   // Соотношение между описанием задачи и панелью кода (в процентах)
-  PROBLEM_DESCRIPTION_WIDTH: 30, // Описание задачи занимает 30% ширины
-  CODE_PANEL_WIDTH: 70, // Редактор и вывод занимают 70% ширины
+  PROBLEM_DESCRIPTION_WIDTH: 40, // Описание задачи занимает 30% ширины
+  CODE_PANEL_WIDTH: 60, // Редактор и вывод занимают 70% ширины
 }
 
 type TabType = 'problem' | 'results';
@@ -22,7 +22,14 @@ export default function ProblemPage() {
   const { token } = useAuth()
   const [problem, setProblem] = useState<Problem | null>(null)
   const [language, setLanguage] = useState<'python' | 'cpp' | 'java'>('python')
-  const [code, setCode] = useState(getDefaultTemplate('python'))
+  
+  // Вместо одной переменной code создаем объект с кодом для каждого языка
+  const [codes, setCodes] = useState<Record<string, string>>({
+    python: getDefaultTemplate('python'),
+    cpp: getDefaultTemplate('cpp'),
+    java: getDefaultTemplate('java')
+  })
+  
   const [output, setOutput] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -35,10 +42,79 @@ export default function ProblemPage() {
   useEffect(() => {
     if (!uuid) return setLoading(false)
     getProblem(uuid, token || '')
-      .then(setProblem)
+      .then((data) => {
+        setProblem(data)
+        
+        // Если задача уже решена, устанавливаем язык и код из сохраненного решения
+        if (data.solved && data.solution) {
+          const solutionLanguage = data.solution.language as 'python' | 'cpp' | 'java'
+          setLanguage(solutionLanguage)
+          
+          // Обновляем код только для данного языка
+          setCodes(prevCodes => ({
+            ...prevCodes,
+            [solutionLanguage]: data.solution.code
+          }))
+          
+          // Формируем объект output на основе данных из решения
+          setOutput({
+            status: 'success',
+            message: 'All test cases passed!',
+            details: {
+              average_time_ms: data.solution.average_time_ms,
+              average_memory_kb: data.solution.average_memory_kb
+            }
+          })
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [uuid, token])
+
+  useEffect(() => {
+    if (problem && activeTab === 'problem') {
+      // Give DOM time to render the HTML content
+      const timer = setTimeout(() => {
+        // Process all pre elements
+        document.querySelectorAll('.problem-description pre').forEach(pre => {
+          pre.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important; overflow-x: auto !important;');
+          
+          // Find all children that could contain text that might overflow
+          const allChildElements = pre.querySelectorAll('*');
+          allChildElements.forEach(el => {
+            el.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+          });
+        });
+        
+        // Process strong elements that might contain explanation text
+        document.querySelectorAll('.problem-description strong').forEach(strong => {
+          strong.setAttribute('style', 'display: inline-block; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+        });
+        
+        // Handle specific code elements inside pre blocks
+        document.querySelectorAll('.problem-description pre code').forEach(code => {
+          code.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+        });
+        
+        // Process all inline elements that might not wrap properly
+        document.querySelectorAll('.problem-description span, .problem-description font, .problem-description em').forEach(el => {
+          el.setAttribute('style', 'display: inline-block; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+        });
+        
+        // Fix potential issues with tables or other block elements
+        document.querySelectorAll('.problem-description table, .problem-description ul, .problem-description ol').forEach(el => {
+          el.setAttribute('style', 'max-width: 100% !important; overflow-wrap: break-word !important; table-layout: fixed !important;');
+        });
+        
+        // Process all <li> elements to ensure proper wrapping
+        document.querySelectorAll('.problem-description li').forEach(el => {
+          el.setAttribute('style', 'word-break: break-all !important; overflow-wrap: break-word !important;');
+        });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [problem, activeTab]);
 
   function getDefaultTemplate(lang: string) {
     if (lang === 'cpp') {
@@ -68,7 +144,9 @@ export default function ProblemPage() {
     setSubmitting(true)
     setOutput(null)
     try {
-      const res = await submitSolution(uuid, { language, code }, token || '')
+      // Используем текущий код для выбранного языка
+      const currentCode = codes[language]
+      const res = await submitSolution(uuid, { language, code: currentCode }, token || '')
       setOutput(res)
       // Автоматически переключаемся на вкладку с результатами при получении ответа
       setActiveTab('results')
@@ -113,9 +191,10 @@ export default function ProblemPage() {
                   <select
                     value={language}
                     onChange={(e) => {
-                      const lang = e.target.value as 'python' | 'cpp' | 'java'
-                      setLanguage(lang)
-                      setCode(getDefaultTemplate(lang))
+                      const newLanguage = e.target.value as 'python' | 'cpp' | 'java'
+                      setLanguage(newLanguage)
+                      // Мы больше не меняем код при переключении языка,
+                      // так как теперь храним код для каждого языка отдельно
                     }}
                     className="appearance-none pl-10 pr-10 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                   >
@@ -134,6 +213,14 @@ export default function ProblemPage() {
                     </svg>
                   </div>
                 </div>
+                
+                {/* Добавляем индикатор решенной задачи */}
+                {problem?.solved && (
+                  <div className="ml-2 px-3 py-1 bg-green-50 text-green-700 text-sm rounded-full border border-green-200 flex items-center">
+                    <CheckIcon className="w-4 h-4 mr-1 text-green-500" />
+                    Решено
+                  </div>
+                )}
               </div>
               <Button
                 onClick={handleRun}
@@ -157,8 +244,15 @@ export default function ProblemPage() {
               <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                 <Editor
                   language={language}
-                  value={code}
-                  onChange={(v) => setCode(v || '')}
+                  // Используем код для текущего выбранного языка
+                  value={codes[language]}
+                  onChange={(v) => {
+                    // Обновляем только код для текущего языка
+                    setCodes(prevCodes => ({
+                      ...prevCodes,
+                      [language]: v || ''
+                    }))
+                  }}
                   theme="vs-light"
                   options={{
                     fontSize: 14,
@@ -210,18 +304,38 @@ export default function ProblemPage() {
               Результаты
               {output && (
                 <span className={`absolute top-2 right-2 h-2.5 w-2.5 rounded-full ${
-                  output.status === 'success' ? 'bg-green-500 animate-pulse' : 'bg-red-500 animate-pulse'
+                  output.status === 'success' ? 'bg-green-500 animate-pulse' : 
+                  output.message === 'Code compilation failed' ? 'bg-red-500 animate-pulse' :
+                  output.message === 'Code execution failed' ? 'bg-amber-500 animate-pulse' :
+                  'bg-red-500 animate-pulse'
                 }`}></span>
               )}
             </button>
           </div>
+
+          {/* При загрузке страницы, если есть сохраненное решение, автоматически переходим на таб с результатами */}
+          {problem?.solved && output && activeTab === 'problem' && (
+            <div className="p-4 bg-blue-50 text-blue-800 border-b border-blue-100">
+              <p className="flex items-center text-sm">
+                <CheckIcon className="w-4 h-4 mr-2 text-blue-500" />
+                У вас уже есть решение к этой задаче.
+                <Button
+                  variant="link"
+                  className="ml-2 p-0 h-auto text-blue-600 font-medium"
+                  onClick={() => setActiveTab('results')}
+                >
+                  Посмотреть результат
+                </Button>
+              </p>
+            </div>
+          )}
 
           {/* Содержимое табов */}
           <div className="flex-1 overflow-y-auto">
             {/* Таб с условием задачи */}
             {activeTab === 'problem' && (
               <div className="px-6 py-5 h-full">
-                <div className="max-w-2xl">
+                <div className="max-w-full break-words">
                   <div className="mb-8 relative">
                     <div className="flex items-center gap-3 mb-3">
                       {problem.id !== undefined && (
@@ -243,7 +357,12 @@ export default function ProblemPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="prose max-w-none pb-8 prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700 prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200 prose-pre:shadow-sm prose-pre:rounded-lg" dangerouslySetInnerHTML={{ __html: problem.description }} />
+                  <div className="problem-description">
+                    <div 
+                      className="prose prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:overflow-wrap prose-pre:max-w-full prose-pre:overflow-x-auto prose-code:break-all prose-code:whitespace-pre-wrap prose-strong:break-words prose-strong:inline-block pb-8"
+                      dangerouslySetInnerHTML={{ __html: problem.description }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -270,8 +389,60 @@ export default function ProblemPage() {
 
                 {output && (
                   <div className="space-y-4 animate-fade-in">
+                    {/* Compilation Error Display */}
+                    {output.status === 'failed' && output.message === 'Code compilation failed' && (
+                      <div className="bg-white rounded-xl border border-red-200 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-red-50 border-b border-red-200 flex items-center">
+                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-red-500" />
+                          <h3 className="text-sm font-medium text-red-700">Ошибка компиляции</h3>
+                        </div>
+                        <div className="p-4">
+                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-red-100 text-red-800 shadow-inner max-h-80 whitespace-pre-wrap">
+                            {output.error_details || "Во время компиляции произошла ошибка"}
+                          </pre>
+                          <div className="mt-3 text-sm text-gray-600">
+                            <p>Возможные причины ошибки:</p>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              <li>Синтаксические ошибки в коде</li>
+                              <li>Нехватка памяти в тестирующей системе</li>
+                              <li>Использование неопределенных переменных или функций</li>
+                              <li>Неправильные типы данных или несоответствие типов</li>
+                              <li>Отсутствие необходимых библиотек или зависимостей</li>
+                            </ul>
+                            <p className="mt-2">Пожалуйста, исправьте ошибки и попробуйте снова.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Runtime Error Display */}
+                    {output.status === 'failed' && output.message === 'Code execution failed' && (
+                      <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center">
+                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-amber-500" />
+                          <h3 className="text-sm font-medium text-amber-700">Ошибка выполнения</h3>
+                        </div>
+                        <div className="p-4">
+                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-amber-100 text-amber-800 shadow-inner max-h-80 whitespace-pre-wrap">
+                            {output.error_details || "Во время выполнения программы произошла ошибка"}
+                          </pre>
+                          <div className="mt-3 text-sm text-gray-600">
+                            <p>Возможные причины ошибки:</p>
+                              <ul className="list-disc ml-5 mt-2 space-y-1">
+                                <li>Синтаксические ошибки (если вы используете, например, язык <span className="px-1 py-0.5 bg-blue-50 text-blue-700 rounded font-mono text-sm border border-blue-100">Python</span>)</li>
+                                <li>Ошибка во время выполнения (<span className="px-1 py-0.5 bg-red-50 text-red-700 rounded font-mono text-sm border border-red-100">Runtime Error</span>)</li>
+                                <li>Бесконечный цикл или превышение лимита времени</li>
+                                <li>Нехватка памяти или переполнение стека</li>
+                                <li>Неправильная обработка ввода/вывода</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Performance metrics */}
-                    {output.details && (
+                    {output.details && !(output.status === 'failed' && 
+                      (output.message === 'Code compilation failed' || output.message === 'Code execution failed')) && (
                       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                           <h3 className="text-sm font-medium text-gray-700">Показатели производительности</h3>
@@ -306,7 +477,8 @@ export default function ProblemPage() {
                     )}
 
                     {/* Failed tests accordion */}
-                    {output.failed_tests?.length > 0 && (
+                    {output.failed_tests?.length > 0 && !(output.status === 'failed' && 
+                      (output.message === 'Code compilation failed' || output.message === 'Code execution failed')) && (
                       <details className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm" open>
                         <summary className="px-4 py-3 bg-red-50 border-b border-red-200 cursor-pointer flex justify-between items-center">
                           <div className="flex items-center">
@@ -336,34 +508,52 @@ export default function ProblemPage() {
                                   </svg>
                                 </summary>
                                 <div className="p-4 bg-white">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                      <div className="flex items-center text-xs font-semibold text-gray-500 uppercase mb-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                                        </svg>
-                                        Входные данные
-                                      </div>
-                                      <pre className="bg-gray-50 p-3 rounded-md text-xs overflow-x-auto border border-gray-200 font-mono text-gray-800 shadow-inner max-h-40">{test.input}</pre>
-                                    </div>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <div className="flex items-center text-xs font-semibold text-gray-500 uppercase mb-2">
+                                  {/* Updated grid layout for better alignment */}
+                                  <div className="grid grid-cols-1 gap-4">
+                                    {/* Input data box */}
+                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                      <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                                        <div className="flex items-center text-xs font-semibold text-gray-600">
                                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                                           </svg>
-                                          Ожидаемый результат
+                                          ВХОДНЫЕ ДАННЫЕ
                                         </div>
-                                        <pre className="bg-green-50 p-3 rounded-md text-xs overflow-x-auto border border-green-200 font-mono text-green-800 shadow-inner max-h-20">{test.output}</pre>
                                       </div>
-                                      <div>
-                                        <div className="flex items-center text-xs font-semibold text-gray-500 uppercase mb-2">
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                          </svg>
-                                          Фактический результат
+                                      <div className="p-3">
+                                        <pre className="bg-gray-50 p-3 rounded-md text-xs overflow-x-auto font-mono text-gray-800 shadow-inner min-h-[40px] whitespace-pre-wrap break-words">{test.input || "(пустой ввод)"}</pre>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                      {/* Expected output box */}
+                                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                        <div className="px-3 py-2 bg-green-50 border-b border-green-200">
+                                          <div className="flex items-center text-xs font-semibold text-green-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            ОЖИДАЕМЫЙ РЕЗУЛЬТАТ
+                                          </div>
                                         </div>
-                                        <pre className="bg-red-50 p-3 rounded-md text-xs overflow-x-auto border border-red-200 font-mono text-red-800 shadow-inner max-h-20">{test.actual_output}</pre>
+                                        <div className="p-3">
+                                          <pre className="bg-green-50 p-3 rounded-md text-xs overflow-x-auto font-mono text-green-800 shadow-inner min-h-[40px] whitespace-pre-wrap break-words">{test.output || "(пустой вывод)"}</pre>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Actual output box */}
+                                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                        <div className="px-3 py-2 bg-red-50 border-b border-red-200">
+                                          <div className="flex items-center text-xs font-semibold text-red-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            ФАКТИЧЕСКИЙ РЕЗУЛЬТАТ
+                                          </div>
+                                        </div>
+                                        <div className="p-3">
+                                          <pre className="bg-red-50 p-3 rounded-md text-xs overflow-x-auto font-mono text-red-800 shadow-inner min-h-[40px] whitespace-pre-wrap break-words">{test.actual_output || "(пустой вывод)"}</pre>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -378,9 +568,7 @@ export default function ProblemPage() {
                     {/* Successful tests summary */}
                     {output.status === 'success' && (
                       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-green-50 border-b border-green-200">
-                          <h3 className="text-sm font-medium text-green-700 flex items-center">
-                            <CheckIcon className="w-5 h-5 mr-2 text-green-500" />
+                        <div className="px-4 py-3 bg-green-50 border-b border-green-200">                          <h3 className="text-sm font-medium text-green-700 flex items-center">                            <CheckIcon className="w-5 h-5 mr-2 text-green-500" />
                             Решение верно!
                           </h3>
                         </div>

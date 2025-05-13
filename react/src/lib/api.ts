@@ -1,5 +1,50 @@
 const BASE_URL = "http://localhost:8080/api";
 
+/**
+ * Extract readable error message from different error formats
+ */
+export function extractErrorMessage(error: any): string {
+  // If the error is already a string
+  if (typeof error === 'string') {
+    // Check if it's JSON formatted
+    if (error.startsWith('{') && error.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(error);
+        return parsed.error || error;
+      } catch {
+        return error;
+      }
+    }
+    return error;
+  }
+  
+  // If error has a response property (Axios error)
+  if (error.response && error.response.data) {
+    if (typeof error.response.data === 'string') {
+      try {
+        const parsed = JSON.parse(error.response.data);
+        return parsed.error || 'Ошибка сервера';
+      } catch {
+        return error.response.data;
+      }
+    }
+    return error.response.data.error || 'Ошибка сервера';
+  }
+  
+  // If error has message property
+  if (error.message) {
+    return error.message;
+  }
+  
+  // If error has an error property
+  if (error.error) {
+    return error.error;
+  }
+  
+  // Default
+  return 'Неизвестная ошибка';
+}
+
 export async function request(url: string, options: RequestInit = {}, token?: string) {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -12,10 +57,52 @@ export async function request(url: string, options: RequestInit = {}, token?: st
   return res.json();
 }
 
-export const loginUser = (username: string, password: string) =>
-  request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
-export const signUpUser = (username: string, password: string) =>
-  request("/auth/signup", { method: "POST", body: JSON.stringify({ username, password }) });
+export const loginUser = async (username: string, password: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Ошибка при входе');
+    }
+    
+    return data;
+  } catch (error) {
+    // Use the extractErrorMessage helper to get a clean error
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
+export const signUpUser = async (username: string, password: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Ошибка при регистрации');
+    }
+    
+    return data;
+  } catch (error) {
+    // Use the extractErrorMessage helper to get a clean error
+    throw new Error(extractErrorMessage(error));
+  }
+};
+
 export const getProblems = (token: string) => request("/problems", {}, token);
 export const getProblem = (id: string, token: string) => request(`/problem/${id}`, {}, token);
 export const submitSolution = (id: string, payload: any, token: string) =>

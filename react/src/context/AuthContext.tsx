@@ -4,7 +4,7 @@ import { getProfile } from '../lib/api'
 
 interface AuthContextType {
   token: string | null
-  login: (t: string) => void
+  login: (t: string, rememberMe: boolean) => void
   logout: () => void
   role: string | null
   isAdmin: boolean
@@ -37,9 +37,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token])
 
-  const login = (t: string) => {
-    localStorage.setItem('token', t)
+  const login = (t: string, rememberMe = false) => {
+
+    if (rememberMe) {
+
+      localStorage.setItem('token', t)
+
+    } else {
+
+      sessionStorage.setItem('token', t)
+
+    }
+
     setToken(t)
+
   }
   
   const logout = () => {

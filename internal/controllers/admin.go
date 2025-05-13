@@ -45,7 +45,7 @@ func (h *Handlers) AddTestcaseHandler(c *gin.Context) {
 		return
 	}
 
-	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID)
+	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID, c.GetString("userID"))
 	if errors.Is(err, problems.ErrProblemNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 		return
@@ -72,18 +72,6 @@ func (h *Handlers) AddTestcaseHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "test case added successfully"})
 }
 
-func (h *Handlers) GetAllProblemsHandler(c *gin.Context) {
-	problems, err := h.ProblemService.ProblemRepo.GetAllProblems()
-
-	if err != nil {
-		h.Logger.Error("failed to get problems", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get problems"})
-		return
-	}
-
-	c.JSON(http.StatusOK, problems)
-}
-
 func (h *Handlers) GetProblemTestcasesHandler(c *gin.Context) {
 	problemUUID := c.Param("uuid")
 	if problemUUID == "" {
@@ -91,7 +79,7 @@ func (h *Handlers) GetProblemTestcasesHandler(c *gin.Context) {
 		return
 	}
 
-	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID)
+	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID, c.GetString("userID"))
 	if errors.Is(err, problems.ErrProblemNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 		return
@@ -102,10 +90,7 @@ func (h *Handlers) GetProblemTestcasesHandler(c *gin.Context) {
 	}
 
 	testcases, err := h.ProblemService.ProblemRepo.GetTestCasesByProblemUUID(problem.UUID)
-	if errors.Is(err, problems.ErrTestCasesNotFound) {
-		c.JSON(http.StatusNotFound, testcases)
-		return
-	} else if err != nil {
+	if err != nil && !errors.Is(err, problems.ErrTestCasesNotFound) {
 		h.Logger.Error("failed to get test cases", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get test cases"})
 		return
@@ -142,7 +127,7 @@ func (h *Handlers) DeleteProblemHandler(c *gin.Context) {
 		return
 	}
 
-	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID)
+	problem, err := h.ProblemService.ProblemRepo.GetProblemByUUID(problemUUID, c.GetString("userID"))
 	if errors.Is(err, problems.ErrProblemNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "problem not found"})
 		return

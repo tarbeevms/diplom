@@ -28,6 +28,7 @@ type SessionRepository interface {
 	GetSessionByToken(token string) (*Session, error)
 	VerifyUsernamePassword(username, password string) (userID, role string, match bool, err error)
 	AddUser(username, hashedPassword, role string) error
+	IsUserExists(username string) (bool, error)
 }
 
 type AuthService struct {
