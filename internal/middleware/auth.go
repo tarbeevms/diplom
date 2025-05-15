@@ -39,6 +39,7 @@ func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 		// Сохраняем данные пользователя в контекст запроса
 		c.Set("userID", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Set("username", claims.Username)
 
 		c.Next()
 	}

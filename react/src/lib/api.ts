@@ -45,16 +45,82 @@ export function extractErrorMessage(error: any): string {
   return 'Неизвестная ошибка';
 }
 
+// Add this function to handle unauthorized errors
+function handleAuthError(errorText: string): boolean {
+  // Check if the error contains "Not authorized" phrase
+  if (typeof errorText === 'string' && 
+      (errorText.includes('Not authorized') || 
+       errorText.includes('Unauthorized') || 
+       errorText.toLowerCase().includes('not authorized'))) {
+    
+    console.warn("Auth error detected:", errorText);
+    
+    // Dispatch custom event to notify the app about auth failure
+    window.dispatchEvent(new CustomEvent('auth:logout', { 
+      detail: { message: errorText, forced: true }
+    }));
+    
+    return true;
+  }
+  
+  return false;
+}
+
 export async function request(url: string, options: RequestInit = {}, token?: string) {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
   };
 
-  // Добавляем credentials: "include" для всех запросов
-  const res = await fetch(`${BASE_URL}${url}`, { ...options, credentials: "include", headers });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  try {
+    // Always include credentials to send cookies with every request
+    const res = await fetch(`${BASE_URL}${url}`, { 
+      ...options, 
+      credentials: "include", // This ensures cookies are sent with the request
+      headers 
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      let errorObj;
+      
+      try {
+        // Try to parse as JSON
+        errorObj = JSON.parse(errorText);
+        
+        // Check if this is an auth error
+        if (errorObj.error && handleAuthError(errorObj.error)) {
+          // If it's an auth error, throw a simple error that won't show a toast
+          throw new Error('Authentication required');
+        }
+        
+      } catch (parseError) {
+        // If parsing fails, use the raw text
+        if (handleAuthError(errorText)) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(errorText);
+      }
+      
+      throw new Error(errorObj.error || 'Unknown error');
+    }
+    
+    return res.json();
+  } catch (error) {
+    // Only re-throw if it's not already handled as an auth error
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    
+    const errorMessage = extractErrorMessage(error);
+    if (!handleAuthError(errorMessage)) {
+      // Only throw the original error if it's not an auth error
+      throw error;
+    } else {
+      // For auth errors, throw a special error
+      throw new Error('Authentication required');
+    }
+  }
 }
 
 export const loginUser = async (username: string, password: string) => {
@@ -103,25 +169,140 @@ export const signUpUser = async (username: string, password: string) => {
   }
 };
 
-export const getProblems = (token: string) => request("/problems", {}, token);
-export const getProblem = (id: string, token: string) => request(`/problem/${id}`, {}, token);
-export const submitSolution = (id: string, payload: any, token: string) =>
-  request(`/problem/${id}`, { method: "POST", body: JSON.stringify(payload) }, token);
-export const getDashboard = (token: string) => request("/admin/dashboard", {}, token);
-export const getProfile = (token: string) => request("/profile", {}, token);
+export const getProblems = async (token: string) => {
+  try {
+    return await request("/problems", {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      // This is already handled by the auth event
+      throw error;
+    }
+    
+    // For other errors, show the error message
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить задачи: ${errorMessage}`);
+  }
+};
+
+export const getProblem = async (id: string, token: string) => {
+  try {
+    return await request(`/problem/${id}`, {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить задачу: ${errorMessage}`);
+  }
+};
+
+export const submitSolution = async (id: string, payload: any, token: string) => {
+  try {
+    return await request(`/problem/${id}`, { method: "POST", body: JSON.stringify(payload) }, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось отправить решение: ${errorMessage}`);
+  }
+};
+
+export const getDashboard = async (token: string) => {
+  try {
+    return await request("/admin/dashboard", {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить панель управления: ${errorMessage}`);
+  }
+};
+
+export const getProfile = async (token: string) => {
+  try {
+    return await request("/profile", {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить профиль: ${errorMessage}`);
+  }
+};
+
+// Add this function to get solution history
+export const getSolutionHistory = async (token: string, problemUUID?: string) => {
+  try {
+    const url = problemUUID ? `/solutions?problem_uuid=${problemUUID}` : '/solutions';
+    return await request(url, {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить историю решений: ${errorMessage}`);
+  }
+};
 
 // Admin API endpoints
-export const createProblem = (problem: { name: string; difficulty: string; description: string }, token: string) =>
-  request("/admin/problem", { method: "POST", body: JSON.stringify(problem) }, token);
+export const createProblem = async (problem: { name: string; difficulty: string; description: string }, token: string) => {
+  try {
+    return await request("/admin/problem", { method: "POST", body: JSON.stringify(problem) }, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось создать задачу: ${errorMessage}`);
+  }
+};
 
-export const deleteProblem = (problemId: string, token: string) =>
-  request(`/admin/problem/${problemId}`, { method: "DELETE" }, token);
+export const deleteProblem = async (problemId: string, token: string) => {
+  try {
+    return await request(`/admin/problem/${problemId}`, { method: "DELETE" }, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось удалить задачу: ${errorMessage}`);
+  }
+};
 
-export const getTestCases = (problemId: string, token: string) =>
-  request(`/admin/problem/${problemId}/testcases`, {}, token);
+export const getTestCases = async (problemId: string, token: string) => {
+  try {
+    return await request(`/admin/problem/${problemId}/testcases`, {}, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось загрузить тестовые случаи: ${errorMessage}`);
+  }
+};
 
-export const addTestCase = (problemId: string, testCase: { input: string; output: string }, token: string) =>
-  request(`/admin/problem/${problemId}/testcase`, { method: "POST", body: JSON.stringify(testCase) }, token);
+export const addTestCase = async (problemId: string, testCase: { input: string; output: string }, token: string) => {
+  try {
+    return await request(`/admin/problem/${problemId}/testcase`, { method: "POST", body: JSON.stringify(testCase) }, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось добавить тестовый случай: ${errorMessage}`);
+  }
+};
 
-export const deleteTestCase = (testCaseId: string, token: string) =>
-  request(`/admin/testcase/${testCaseId}`, { method: "DELETE" }, token);
+export const deleteTestCase = async (testCaseId: string, token: string) => {
+  try {
+    return await request(`/admin/testcase/${testCaseId}`, { method: "DELETE" }, token);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Authentication required') {
+      throw error;
+    }
+    const errorMessage = extractErrorMessage(error);
+    throw new Error(`Не удалось удалить тестовый случай: ${errorMessage}`);
+  }
+};

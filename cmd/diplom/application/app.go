@@ -6,6 +6,7 @@ import (
 	"diplom/internal/controllers"
 	"diplom/internal/problems"
 	"diplom/internal/repo"
+	"diplom/internal/user"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -40,6 +41,7 @@ func InitApplication() (*Application, error) {
 		Handlers: controllers.Handlers{
 			AuthService:    auth.NewAuthService(pgClient, logger),
 			ProblemService: problemService,
+			UserService:    user.NewUserService(pgClient, logger),
 			Logger:         logger.Named("handlers"),
 		},
 		Logger: logger,

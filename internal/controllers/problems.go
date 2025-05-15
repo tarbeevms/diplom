@@ -30,8 +30,32 @@ func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("userID")
+	if userID == "" {
+		h.Logger.Error("user ID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	// Process solution
 	result, err := h.ProblemService.ProcessSolution(c.Request.Context(), req, c.GetString("userID"))
+
+	// Get comparative statistics
+	avgTime, avgMemory, timeBeatPercent, memoryBeatPercent, errStat := h.ProblemService.ProblemRepo.GetSolutionStatistics(
+		problemUUID,
+		userID,
+		req.Language,
+		result.Details.AverageTime,
+		int64(result.Details.AverageMemory),
+	)
+	if errStat == nil {
+		result.Details.AvgOtherTime = avgTime
+		result.Details.AvgOtherMemory = avgMemory
+		result.Details.TimeBeatPercent = timeBeatPercent
+		result.Details.MemoryBeatPercent = memoryBeatPercent
+	} else {
+		h.Logger.Error("failed to get solution statistics", zap.Error(err))
+	}
 
 	switch {
 	case errors.Is(err, problems.ErrCompilationFailed) || errors.Is(err, problems.ErrExecutionFailed):
@@ -71,6 +95,22 @@ func (h *Handlers) GetProblemHandler(c *gin.Context) {
 			h.Logger.Error("failed to get solution", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get solution"})
 			return
+		}
+		// Get comparative statistics
+		avgTime, avgMemory, timeBeatPercent, memoryBeatPercent, err := h.ProblemService.ProblemRepo.GetSolutionStatistics(
+			problem.UUID,
+			userID,
+			solution.Language,
+			solution.AverageTime,
+			int64(solution.AverageMemory),
+		)
+		if err == nil {
+			solution.AvgOtherTime = avgTime
+			solution.AvgOtherMemory = avgMemory
+			solution.TimeBeatPercent = timeBeatPercent
+			solution.MemoryBeatPercent = memoryBeatPercent
+		} else {
+			h.Logger.Error("failed to get solution statistics", zap.Error(err))
 		}
 		problem.Solution = &solution
 	}

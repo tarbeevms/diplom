@@ -56,15 +56,23 @@ export default function ProblemPage() {
             [solutionLanguage]: data.solution.code
           }))
           
-          // Формируем объект output на основе данных из решения
+          // Формируем объект output на основе данных из решения, включая сравнительную статистику
           setOutput({
             status: 'success',
             message: 'All test cases passed!',
             details: {
               average_time_ms: data.solution.average_time_ms,
-              average_memory_kb: data.solution.average_memory_kb
+              average_memory_kb: data.solution.average_memory_kb,
+              // Добавляем сравнительную статистику
+              avg_other_time_ms: data.solution.avg_other_time_ms,
+              avg_other_memory_kb: data.solution.avg_other_memory_kb,
+              time_beat_percent: data.solution.time_beat_percent,
+              memory_beat_percent: data.solution.memory_beat_percent
             }
           })
+          
+          // Если есть решение, по умолчанию показываем вкладку с результатами
+          setActiveTab('results')
         }
       })
       .catch(console.error)
@@ -389,90 +397,32 @@ export default function ProblemPage() {
 
                 {output && (
                   <div className="space-y-4 animate-fade-in">
-                    {/* Compilation Error Display */}
-                    {output.status === 'failed' && output.message === 'Code compilation failed' && (
-                      <div className="bg-white rounded-xl border border-red-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-red-50 border-b border-red-200 flex items-center">
-                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-red-500" />
-                          <h3 className="text-sm font-medium text-red-700">Ошибка компиляции</h3>
-                        </div>
-                        <div className="p-4">
-                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-red-100 text-red-800 shadow-inner max-h-80 whitespace-pre-wrap">
-                            {output.error_details || "Во время компиляции произошла ошибка"}
-                          </pre>
-                          <div className="mt-3 text-sm text-gray-600">
-                            <p>Возможные причины ошибки:</p>
-                            <ul className="list-disc pl-5 mt-1 space-y-1">
-                              <li>Синтаксические ошибки в коде</li>
-                              <li>Нехватка памяти в тестирующей системе</li>
-                              <li>Использование неопределенных переменных или функций</li>
-                              <li>Неправильные типы данных или несоответствие типов</li>
-                              <li>Отсутствие необходимых библиотек или зависимостей</li>
-                            </ul>
-                            <p className="mt-2">Пожалуйста, исправьте ошибки и попробуйте снова.</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Runtime Error Display */}
-                    {output.status === 'failed' && output.message === 'Code execution failed' && (
-                      <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center">
-                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-amber-500" />
-                          <h3 className="text-sm font-medium text-amber-700">Ошибка выполнения</h3>
-                        </div>
-                        <div className="p-4">
-                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-amber-100 text-amber-800 shadow-inner max-h-80 whitespace-pre-wrap">
-                            {output.error_details || "Во время выполнения программы произошла ошибка"}
-                          </pre>
-                          <div className="mt-3 text-sm text-gray-600">
-                            <p>Возможные причины ошибки:</p>
-                              <ul className="list-disc ml-5 mt-2 space-y-1">
-                                <li>Синтаксические ошибки (если вы используете, например, язык <span className="px-1 py-0.5 bg-blue-50 text-blue-700 rounded font-mono text-sm border border-blue-100">Python</span>)</li>
-                                <li>Ошибка во время выполнения (<span className="px-1 py-0.5 bg-red-50 text-red-700 rounded font-mono text-sm border border-red-100">Runtime Error</span>)</li>
-                                <li>Бесконечный цикл или превышение лимита времени</li>
-                                <li>Нехватка памяти или переполнение стека</li>
-                                <li>Неправильная обработка ввода/вывода</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Performance metrics */}
-                    {output.details && !(output.status === 'failed' && 
-                      (output.message === 'Code compilation failed' || output.message === 'Code execution failed')) && (
+                    {/* Successful tests summary - Fix alignment */}
+                    {output.status === 'success' && (
                       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                          <h3 className="text-sm font-medium text-gray-700">Показатели производительности</h3>
+                        <div className="px-4 py-3 bg-green-50 border-b border-green-200">
+                          <h3 className="text-sm font-medium text-green-700 flex items-center">
+                            <CheckIcon className="w-5 h-5 mr-2 text-green-500" />
+                            Решение верно!
+                          </h3>
                         </div>
-                        <div className="grid grid-cols-2 divide-x divide-gray-200">
-                          <div className="p-4 flex flex-col items-center justify-center">
-                            <div className="flex items-center mb-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span className="text-xs font-semibold text-gray-500 uppercase">Время выполнения</span>
-                            </div>
-                            <div className="flex items-baseline">
-                              <span className="text-blue-700 font-bold text-2xl">{output.details.average_time_ms}</span>
-                              <span className="text-blue-600 ml-1 text-sm">мс</span>
-                            </div>
-                          </div>
-                          <div className="p-4 flex flex-col items-center justify-center">
-                            <div className="flex items-center mb-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span className="text-xs font-semibold text-gray-500 uppercase">Память</span>
-                            </div>
-                            <div className="flex items-baseline">
-                              <span className="text-purple-700 font-bold text-2xl">{output.details.average_memory_kb}</span>
-                              <span className="text-purple-600 ml-1 text-sm">КБ</span>
-                            </div>
-                          </div>
-                        </div>
+                        <div className="p-4 text-sm text-gray-700">
+  <p className="flex items-center">
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      className="h-5 w-5 text-green-500 mr-2" 
+      fill="none" 
+      viewBox="0 0 24 24" 
+      stroke="currentColor"
+    >
+      {/* Кружок */}
+      <circle cx="12" cy="12" r="9" strokeWidth={2} />
+      {/* Галочка, смещенная вниз на 1px */}
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13l2 2 4-4" />
+    </svg>
+    <span>Все тесты успешно пройдены</span>
+  </p>
+</div>
                       </div>
                     )}
 
@@ -565,22 +515,157 @@ export default function ProblemPage() {
                       </details>
                     )}
 
-                    {/* Successful tests summary */}
-                    {output.status === 'success' && (
-                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-green-50 border-b border-green-200">                          <h3 className="text-sm font-medium text-green-700 flex items-center">                            <CheckIcon className="w-5 h-5 mr-2 text-green-500" />
-                            Решение верно!
-                          </h3>
-                        </div>
-                        <div className="p-4 text-sm text-gray-700">
-                          <p className="flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    {/* Performance metrics in collapsible section - more compact version */}
+                    {output.details && !(output.status === 'failed' && 
+                      (output.message === 'Code compilation failed' || output.message === 'Code execution failed')) && (
+                      <details className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm" open>
+                        <summary className="px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer flex justify-between items-center">
+                          <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
-                            Все тесты успешно пройдены
-                          </p>
+                            Показатели производительности
+                          </h3>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 group-open:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </summary>
+                        
+                        <div className="p-4">
+                          {/* Combined efficiency rating and metrics */}
+                          <div className="mb-4">
+                            {/* Display overall efficiency rating if comparison metrics exist */}
+                            {output.details.time_beat_percent !== undefined && output.details.memory_beat_percent !== undefined && (
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-medium text-gray-700">Эффективность решения:</span>
+                                
+                                {(() => {
+                                  const overallScore = (output.details.time_beat_percent + output.details.memory_beat_percent) / 2;
+                                  let performanceText = '';
+                                  let performanceClass = '';
+                                  let icon = null;
+                                  
+                                  if (overallScore >= 90) {
+                                    performanceText = 'Превосходно';
+                                    performanceClass = 'bg-green-100 text-green-800 border-green-200';
+                                    icon = <span className="mr-1">🏆</span>;
+                                  } else if (overallScore >= 70) {
+                                    performanceText = 'Отлично';
+                                    performanceClass = 'bg-green-50 text-green-700 border-green-200';
+                                    icon = <span className="mr-1">⭐</span>;
+                                  } else if (overallScore >= 50) {
+                                    performanceText = 'Хорошо';
+                                    performanceClass = 'bg-blue-50 text-blue-700 border-blue-200';
+                                    icon = <span className="mr-1">👍</span>;
+                                  } else if (overallScore >= 30) {
+                                    performanceText = 'Удовлетворительно';
+                                    performanceClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                                    icon = <span className="mr-1">🔍</span>;
+                                  } else {
+                                    performanceText = 'Требует улучшения';
+                                    performanceClass = 'bg-red-50 text-red-700 border-red-200';
+                                    icon = <span className="mr-1">💡</span>;
+                                  }
+                                  
+                                  return (
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center ${performanceClass}`}>
+                                      {icon} {performanceText}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {/* Fix for time/memory display to prevent units from wrapping */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-blue-50 rounded-md border border-blue-100 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  </div>
+                                  <div className="min-w-[110px]">
+                                    <span className="text-xs text-gray-500 block">Время выполнения</span>
+                                    {/* Use a non-breaking space between number and unit */}
+                                    <span className="text-sm font-bold text-gray-800 whitespace-nowrap">{output.details.average_time_ms.toFixed(2)}&nbsp;мс</span>
+                                  </div>
+                                </div>
+                                
+                                {output.details.avg_other_time_ms !== undefined && (
+                                  <div className="flex items-center">
+                                    <div className="w-28 text-right mr-2">
+                                      <span className="text-xs text-gray-500 block">Сравнение</span>
+                                      {/* Use a non-breaking space between number and unit */}
+                                      <span className="text-xs whitespace-nowrap">В среднем: {output.details.avg_other_time_ms.toFixed(2)}&nbsp;мс</span>
+                                    </div>
+                                    <div className="w-12 text-center">
+                                      <div className={`px-2 py-0.5 rounded-full text-xs font-medium inline-block ${
+                                        output.details.time_beat_percent >= 80 ? 'bg-green-100 text-green-800' : 
+                                        output.details.time_beat_percent >= 40 ? 'bg-yellow-100 text-yellow-800' : 
+                                        'bg-red-100 text-red-800'
+                                      }`}>
+                                        {output.details.time_beat_percent.toFixed(0)}%
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-2 bg-purple-50 rounded-md border border-purple-100 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                  <div className="min-w-[110px]">
+                                    <span className="text-xs text-gray-500 block">Память</span>
+                                    {/* Use a non-breaking space between number and unit */}
+                                    <span className="text-sm font-bold text-gray-800 whitespace-nowrap">{output.details.average_memory_kb.toFixed(0)}&nbsp;КБ</span>
+                                  </div>
+                                </div>
+                                
+                                {output.details.avg_other_memory_kb !== undefined && (
+                                  <div className="flex items-center">
+                                    <div className="w-28 text-right mr-2">
+                                      <span className="text-xs text-gray-500 block">Сравнение</span>
+                                      {/* Use a non-breaking space between number and unit */}
+                                      <span className="text-xs whitespace-nowrap">В среднем: {output.details.avg_other_memory_kb.toFixed(0)}&nbsp;КБ</span>
+                                    </div>
+                                    <div className="w-12 text-center">
+                                      <div className={`px-2 py-0.5 rounded-full text-xs font-medium inline-block ${
+                                        output.details.memory_beat_percent >= 80 ? 'bg-green-100 text-green-800' : 
+                                        output.details.memory_beat_percent >= 40 ? 'bg-yellow-100 text-yellow-800' : 
+                                        'bg-red-100 text-red-800'
+                                      }`}>
+                                        {output.details.memory_beat_percent.toFixed(0)}%
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Optimization tip in more compact format */}
+                          {output.details.time_beat_percent !== undefined && output.details.memory_beat_percent !== undefined && (
+                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-start">
+                              <div className="p-1 rounded-full bg-blue-50 border border-blue-100 mr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                <span className="font-medium">Совет: </span>
+                                {output.details.time_beat_percent > output.details.memory_beat_percent ? 
+                                  'Ваше решение быстрее большинства, но есть возможности оптимизировать использование памяти.' :
+                                  'Ваше решение хорошо оптимизировано по памяти, но есть возможности улучшить скорость выполнения.'}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      </details>
                     )}
                   </div>
                 )}

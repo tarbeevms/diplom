@@ -80,6 +80,11 @@ type SubmitResult struct {
 type SolutionResultDetails struct {
 	AverageTime   float64 `json:"average_time_ms"`
 	AverageMemory float64 `json:"average_memory_kb"`
+	// Comparison metrics
+	AvgOtherTime      float64 `json:"avg_other_time_ms"`
+	AvgOtherMemory    int64   `json:"avg_other_memory_kb"`
+	TimeBeatPercent   float64 `json:"time_beat_percent"`
+	MemoryBeatPercent float64 `json:"memory_beat_percent"`
 }
 
 type ProblemSolution struct {
@@ -87,6 +92,7 @@ type ProblemSolution struct {
 	CreatedAt time.Time `json:"created_at"`
 	Code      string    `json:"code"`
 	Language  string    `json:"language"`
+	Status    string    `json:"status"`
 }
 
 // TestCase represents input/output test data for a problem
@@ -111,8 +117,9 @@ type ProblemRepository interface {
 	GetAllProblems(userID string) ([]Problem, error)
 	DeleteTestcase(id int) error
 	DeleteProblem(uuid string) error
-	SaveSolution(userID, problemUUID string, solution ProblemSolution) (int, error)
+	SaveSolution(userID, problemUUID string, solution ProblemSolution, isAccepted bool) (int, error)
 	GetSolutionByProblemAndUser(userID, problemUUID string) (ProblemSolution, error)
+	GetSolutionStatistics(problemUUID, userID, language string, userTime float64, userMemory int64) (float64, int64, float64, float64, error)
 }
 
 // ProblemService orchestrates problem-related operations
@@ -197,15 +204,28 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 
 	// Execute code against test cases
 	passed, failedTests, details, errorDetails, err := s.DockerClient.ExecuteCode(ctx, containerID, req.Language, testCases)
+	if err != nil && !errors.Is(err, ErrExecutionFailed) {
+		return nil, fmt.Errorf("failed to execute code: %w", err)
+	}
+
+	problemSolution := ProblemSolution{
+		SolutionResultDetails: details,
+		CreatedAt:             time.Now(),
+		Code:                  req.Code,
+		Language:              req.Language,
+	}
+	_, saveErr := s.ProblemRepo.SaveSolution(userID, problem.UUID, problemSolution, passed)
+	if saveErr != nil {
+		s.Logger.Error("failed to save solution", zap.Error(saveErr))
+		return nil, fmt.Errorf("failed to save solution: %w", saveErr)
+	}
+
 	if errors.Is(err, ErrExecutionFailed) {
 		return &SubmitResult{
 			Status:       StatusFailed,
 			Message:      MessageCodeExecutionFailed,
 			ErrorDetails: errorDetails,
 		}, ErrExecutionFailed
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute code: %w", err)
 	}
 
 	if !passed {
@@ -215,19 +235,6 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 			FailedTests: failedTests,
 			Details:     &details,
 		}, nil
-	}
-
-	problemSolution := ProblemSolution{
-		SolutionResultDetails: details,
-		CreatedAt:             time.Now(),
-		Code:                  req.Code,
-		Language:              req.Language,
-	}
-
-	_, err = s.ProblemRepo.SaveSolution(userID, problem.UUID, problemSolution)
-	if err != nil {
-		s.Logger.Error("failed to save solution", zap.Error(err))
-		return nil, fmt.Errorf("failed to save solution: %w", err)
 	}
 
 	return &SubmitResult{

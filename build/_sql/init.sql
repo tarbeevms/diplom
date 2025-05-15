@@ -1,6 +1,6 @@
 CREATE TYPE difficulty_enum AS ENUM ('easy', 'medium', 'hard');
-CREATE TYPE status_enum AS ENUM ('pending', 'accepted', 'rejected');
 CREATE TYPE role_enum AS ENUM ('user', 'admin');
+CREATE TYPE status_enum AS ENUM ('accepted', 'rejected');
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -49,7 +49,7 @@ INSERT INTO testcases (problem_uuid, input, output)
 VALUES 
 ('123e4567-e89b-12d3-a456-426614174000','input','output'),
 ('123e4567-e89b-12d3-a456-426614174000','something_else','error'),
-('123e4567-e89b-12d3-a456-426614174000','','error'),
+('123e4567-e89b-12d3-a456-426614174000','\n','error'),
 ('123e4567-e89b-12d3-a456-426614174000','123dsaadfvjnq3;4gu43gvb','error');
 
 
@@ -58,13 +58,11 @@ CREATE TABLE solutions (
     user_id VARCHAR(255) NOT NULL,
     problem_uuid VARCHAR(255) NOT NULL,
     execution_time_ms FLOAT NOT NULL,
-    memory_usage_kb BIGINT NOT NULL,
+    memory_usage_kb FLOAT NOT NULL,
     code TEXT NOT NULL,
     language VARCHAR(255) NOT NULL,
+    status status_enum NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (uuid) ON DELETE CASCADE,
-    FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE,
-    
-    -- Composite unique constraint for upsert operations
-    UNIQUE (user_id, problem_uuid)
+    FOREIGN KEY (problem_uuid) REFERENCES problems (uuid) ON DELETE CASCADE
 );

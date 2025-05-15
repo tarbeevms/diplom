@@ -55,32 +55,31 @@ func NewAuthService(repo SessionRepository, logger *zap.Logger) *AuthService {
 func (a *AuthService) IsAuthorized(tokenString string) (bool, *Claims, error) {
 	claims := &Claims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.CFG.SecretKey), nil
-	})
-	if err != nil || !token.Valid {
-		return false, nil, ErrInvalidToken
-	}
-
-	session, err := a.SessionRepo.GetSessionByToken(token.Raw)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil, nil
-	}
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// Проверяем наличие сессии в базе данных
+	session, err := a.SessionRepo.GetSessionByToken(tokenString)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil, ErrInvalidToken
+		}
+		a.Logger.Error("failed to get session by token", zap.Error(err))
 		return false, nil, err
 	}
 
-	exp := claims.ExpiresAt
-	if exp == 0 {
-		return false, nil, ErrInvalidToken
-	}
+	token, err := jwt.ParseWithClaims(session.Token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(config.CFG.SecretKey), nil
+	})
 
-	if time.Now().Unix() > exp {
-		err := a.SessionRepo.DeleteSessionByToken(session.Token)
-		if err != nil {
-			return false, nil, err
+	if err != nil {
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&jwt.ValidationErrorExpired != 0 {
+				if err := a.SessionRepo.DeleteSessionByToken(token.Raw); err != nil {
+					a.Logger.Error("failed to delete session", zap.Error(err))
+					return false, nil, err
+				}
+				return false, nil, ErrSessionExpired
+			}
 		}
-		return false, nil, ErrSessionExpired
+		return false, nil, ErrInvalidToken
 	}
 
 	return true, claims, nil
@@ -100,7 +99,7 @@ func (a *AuthService) VerifyUserCredentials(username, password string) (userID s
 
 // CreateSession генерирует токен и добавляет сессию в базу данных.
 func (a *AuthService) CreateSession(username, userID, role string) (string, error) {
-	accessToken, err := GenerateToken(userID, role)
+	accessToken, err := GenerateToken(userID, role, username)
 	if err != nil {
 		return "", fmt.Errorf("failed to create access token, %w", err)
 	}

@@ -36,6 +36,7 @@ func (app *Application) InitServer() {
 	{
 		protected.GET("/profile", app.Handlers.ProfileHandler)
 		protected.GET("/problems", app.Handlers.GetAllProblemsHandler)
+		protected.GET("/solutions", app.Handlers.SolutionHistoryHandler)
 		problems := protected.Group("/problem")
 		{
 			problems.GET("/:uuid", app.Handlers.GetProblemHandler)
