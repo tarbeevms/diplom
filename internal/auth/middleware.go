@@ -1,16 +1,14 @@
-package middleware
+package auth
 
 import (
 	"net/http"
 	"strings"
 
-	"diplom/internal/auth"
-
 	"github.com/gin-gonic/gin"
 )
 
 // AuthMiddleware проверяет наличие и валидность JWT-токена
-func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
+func (a *AuthService) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -46,7 +44,7 @@ func AuthMiddleware(a *auth.AuthService) gin.HandlerFunc {
 }
 
 // RoleMiddleware проверяет, что роль пользователя соответствует одному из разрешённых
-func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
+func (a *AuthService) RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleInterface, exists := c.Get("role")
 		if !exists {

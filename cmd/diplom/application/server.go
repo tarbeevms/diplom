@@ -2,7 +2,6 @@ package application
 
 import (
 	"diplom/internal/controllers"
-	"diplom/internal/middleware"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -32,7 +31,7 @@ func (app *Application) InitServer() {
 
 	// Группа защищённых маршрутов
 	protected := router.Group("/api")
-	protected.Use(middleware.AuthMiddleware(app.Handlers.AuthService))
+	protected.Use(app.Handlers.AuthService.AuthMiddleware())
 	{
 		protected.GET("/profile", app.Handlers.ProfileHandler)
 		protected.GET("/problems", app.Handlers.GetAllProblemsHandler)
@@ -46,7 +45,7 @@ func (app *Application) InitServer() {
 
 	// Группа маршрутов для администраторов
 	admin := router.Group("/api/admin")
-	admin.Use(middleware.AuthMiddleware(app.Handlers.AuthService), middleware.RoleMiddleware("admin"))
+	admin.Use(app.Handlers.AuthService.AuthMiddleware(), app.Handlers.AuthService.RoleMiddleware("admin"))
 	{
 		admin.GET("/dashboard", controllers.AdminDashboardHandler)
 

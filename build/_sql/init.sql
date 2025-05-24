@@ -49,7 +49,7 @@ INSERT INTO testcases (problem_uuid, input, output)
 VALUES 
 ('123e4567-e89b-12d3-a456-426614174000','input','output'),
 ('123e4567-e89b-12d3-a456-426614174000','something_else','error'),
-('123e4567-e89b-12d3-a456-426614174000','\n','error'),
+('123e4567-e89b-12d3-a456-426614174000',' ','error'),
 ('123e4567-e89b-12d3-a456-426614174000','123dsaadfvjnq3;4gu43gvb','error');
 
 
