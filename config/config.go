@@ -11,6 +11,7 @@ var CFG Config
 type Config struct {
 	Database  PostgreSQLConfig `mapstructure:"postgres" yaml:"postgres"`
 	SecretKey string           `mapstructure:"secret_key" yaml:"secret_key"`
+	Runtime   RuntimeConfig    `mapstructure:"runtime" yaml:"runtime"`
 }
 
 type PostgreSQLConfig struct {
@@ -19,6 +20,13 @@ type PostgreSQLConfig struct {
 	Username string `mapstructure:"username" yaml:"username"`
 	Password string `mapstructure:"password" yaml:"password"`
 	Database string `mapstructure:"database" yaml:"database"`
+}
+
+type RuntimeConfig struct {
+	MemoryLimitMB   int   `mapstructure:"memory_limit_mb" yaml:"memory_limit_mb"`
+	CPULimit        int   `mapstructure:"cpu_limit" yaml:"cpu_limit"`
+	ExecutionTimeMS int   `mapstructure:"execution_time_ms" yaml:"execution_time_ms"`
+	ProcessLimit    int64 `mapstructure:"process_limit" yaml:"process_limit"`
 }
 
 func ConfigInit() {

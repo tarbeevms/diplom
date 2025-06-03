@@ -99,7 +99,7 @@ func (sr *PGClient) GetProblemByUUID(uuid string, userID string) (*problems.Prob
                 SELECT 1 
                 FROM solutions s 
                 WHERE s.problem_uuid = p.uuid 
-                  AND s.user_id = $1
+                  AND s.user_uuid = $1
                   AND s.status = 'accepted'
             ) AS solved
         FROM 
@@ -179,7 +179,7 @@ func (sr *PGClient) GetAllProblems(userID string) ([]problems.Problem, error) {
              SELECT 1 
              FROM solutions s 
              WHERE s.problem_uuid = p.uuid 
-               AND s.user_id = $1
+               AND s.user_uuid = $1
                AND s.status = 'accepted'
          ) AS solved
      FROM 
@@ -263,7 +263,7 @@ func (sr *PGClient) SaveSolution(userID, problemUUID string, solution problems.P
 	// Изменяем SQL запрос: убираем ON CONFLICT чтобы сохранять все попытки решения
 	query := `
         INSERT INTO solutions (
-            user_id, 
+            user_uuid, 
             problem_uuid, 
             execution_time_ms, 
             memory_usage_kb,
@@ -303,7 +303,7 @@ func (sr *PGClient) GetSolutionByProblemAndUser(userID, problemUUID string) (pro
         FROM 
             solutions
         WHERE 
-            user_id = $1 
+            user_uuid = $1 
             AND problem_uuid = $2
 			AND status = 'accepted'
 		ORDER BY created_at DESC
@@ -352,7 +352,7 @@ func (sr *PGClient) GetUserStreaks(userID string) (currentStreak int, longestStr
 	query := `
         SELECT DISTINCT DATE(created_at) as solution_date
         FROM solutions
-        WHERE user_id = $1
+        WHERE user_uuid = $1
         ORDER BY solution_date DESC
     `
 
@@ -431,7 +431,7 @@ func (sr *PGClient) CalculateSuccessRate(userID string) (float64, error) {
 			FROM 
 				solutions
 			WHERE 
-				user_id = $1
+				user_uuid = $1
 		)
 		SELECT 
 			CASE 
@@ -467,7 +467,7 @@ func (sr *PGClient) GetUserSolutions(userID string, problemUUID string) ([]probl
         FROM 
             solutions
         WHERE 
-            user_id = $1
+            user_uuid = $1
         AND
             ($2 = '' OR problem_uuid = $2)
         ORDER BY 
@@ -513,7 +513,7 @@ func (sr *PGClient) GetSolutionStatistics(problemUUID, userID, language string, 
         FROM solutions
         WHERE problem_uuid = $1
         AND status = 'accepted'
-        AND user_id != $2
+        AND user_uuid != $2
 		AND language = $3
     `
 
@@ -549,7 +549,7 @@ func (sr *PGClient) GetSolutionStatistics(problemUUID, userID, language string, 
         FROM solutions
         WHERE problem_uuid = $2
         AND status = 'accepted'
-        AND user_id != $3
+        AND user_uuid != $3
 		AND language = $4
     `
 	var timePercentile float64
@@ -568,7 +568,7 @@ func (sr *PGClient) GetSolutionStatistics(problemUUID, userID, language string, 
         FROM solutions
         WHERE problem_uuid = $2
         AND status = 'accepted'
-        AND user_id != $3
+        AND user_uuid != $3
 		AND language = $4
     `
 	var memoryPercentile float64

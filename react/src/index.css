@@ -86,6 +86,45 @@ pre, code, .monaco-editor, .editor-container {
   font-feature-settings: "liga" 0; /* Disable ligatures for code */
 }
 
+/* Изолируем стили Monaco Editor */
+.monaco-editor-override {
+  font-family: 'JetBrains Mono', monospace !important;
+  text-align: left !important;
+  hyphens: none !important;
+}
+
+/* Сбрасываем конфликтующие стили для контейнера редактора */
+.editor-container {
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+.editor-container * {
+  text-align: left !important;
+  hyphens: none !important;
+  word-break: normal !important;
+}
+
+.monaco-editor .view-line * {
+  display: inline !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  white-space: pre !important;
+}
+
+/* Переопределяем конфликтующие стили для редактора */
+.monaco-editor {
+  text-align: left !important;
+  hyphens: none !important;
+}
+
+.monaco-editor .view-line {
+  word-break: normal !important;
+  text-align: left !important;
+  hyphens: none !important;
+  white-space: pre !important;
+}
+
 .main-container {
   @apply container mx-auto p-6;
 }
@@ -218,4 +257,60 @@ button:active {
 .hover-elevate:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Дополнительные стили для лучшего распределения текста */
+.problem-description {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  text-align: justify !important;
+  hyphens: auto !important;
+}
+
+.problem-description * {
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+.problem-description p {
+  text-align: justify !important;
+  hyphens: auto !important;
+}
+
+.problem-description pre {
+  white-space: pre-wrap !important;
+  overflow-x: auto !important;
+  text-align: left !important;
+}
+
+.problem-description code {
+  white-space: pre-wrap !important;
+}
+
+.problem-description table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.problem-description img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.problem-description span, 
+.problem-description b,
+.problem-description strong,
+.problem-description em,
+.problem-description i {
+  display: inline !important;
+}
+
+/* Улучшенные стили распределения текста */
+.text-justify {
+  text-align: justify !important;
+}
+
+.hyphens-auto {
+  hyphens: auto !important;
 }

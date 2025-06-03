@@ -40,6 +40,20 @@ func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
 	// Process solution
 	result, err := h.ProblemService.ProcessSolution(c.Request.Context(), req, c.GetString("userID"))
 
+	switch {
+	case errors.Is(err, problems.ErrCompilationFailed) || errors.Is(err, problems.ErrExecutionFailed):
+		c.JSON(http.StatusBadRequest, result)
+		return
+	case errors.Is(err, problems.ErrProblemNotFound) || errors.Is(err, problems.ErrTestCasesNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	case err != nil:
+		h.Logger.Error("failed to process solution", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	default:
+	}
+
 	// Get comparative statistics
 	avgTime, avgMemory, timeBeatPercent, memoryBeatPercent, errStat := h.ProblemService.ProblemRepo.GetSolutionStatistics(
 		problemUUID,
@@ -55,19 +69,10 @@ func (h *Handlers) SubmitSolutionHandler(c *gin.Context) {
 		result.Details.MemoryBeatPercent = memoryBeatPercent
 	} else {
 		h.Logger.Error("failed to get solution statistics", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get solution statistics"})
 	}
 
-	switch {
-	case errors.Is(err, problems.ErrCompilationFailed) || errors.Is(err, problems.ErrExecutionFailed):
-		c.JSON(http.StatusBadRequest, result)
-	case errors.Is(err, problems.ErrProblemNotFound) || errors.Is(err, problems.ErrTestCasesNotFound):
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-	case err != nil:
-		h.Logger.Error("failed to process solution", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-	default:
-		c.JSON(http.StatusOK, result)
-	}
+	c.JSON(http.StatusOK, result)
 }
 
 // GetProblemHandler returns details for a specific problem

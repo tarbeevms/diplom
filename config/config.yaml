@@ -5,3 +5,8 @@ postgres:
   username: root
   password: root
 secret_key: secret_key
+runtime:
+  memory_limit_mb: 512
+  cpu_limit: 1
+  execution_time_ms: 9_000
+  process_limit: 50

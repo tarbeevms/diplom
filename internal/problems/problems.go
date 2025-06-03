@@ -3,6 +3,7 @@ package problems
 import (
 	"context"
 	"database/sql"
+	"diplom/config"
 	"errors"
 	"fmt"
 	"time"
@@ -31,23 +32,8 @@ var (
 	ErrTestCaseNotFound  = errors.New("test case not found")
 	ErrCompilationFailed = errors.New("compilation failed")
 	ErrExecutionFailed   = errors.New("execution failed")
+	ErrExecutionTimeout  = errors.New("execution timeout")
 )
-
-// Runtime configuration
-type Config struct {
-	MemoryLimitMB   int
-	CPULimit        int
-	ExecutionTimeMS int
-	ProcessLimit    int64
-}
-
-// Default configuration settings
-var DefaultConfig = Config{
-	MemoryLimitMB:   512,
-	CPULimit:        1,
-	ExecutionTimeMS: 1000,
-	ProcessLimit:    10,
-}
 
 // Problem represents a coding problem entity
 type Problem struct {
@@ -144,11 +130,11 @@ type CreateTestcaseRequest struct {
 
 // NewProblemService creates a new service with default configuration
 func NewProblemService(repo ProblemRepository, logger *zap.Logger) (*ProblemService, error) {
-	return NewProblemServiceWithConfig(repo, logger, DefaultConfig)
+	return NewProblemServiceWithConfig(repo, logger, config.CFG.Runtime)
 }
 
 // NewProblemServiceWithConfig creates a new service with custom configuration
-func NewProblemServiceWithConfig(repo ProblemRepository, logger *zap.Logger, config Config) (*ProblemService, error) {
+func NewProblemServiceWithConfig(repo ProblemRepository, logger *zap.Logger, config config.RuntimeConfig) (*ProblemService, error) {
 	dockerClient, err := NewDockerClient(logger.Named("docker"), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
@@ -184,6 +170,7 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 	// Create container and process solution
 	containerID, errorDetails, err := s.DockerClient.CreateContainer(ctx, req.Code, req.Language)
 	defer func() {
+		<-s.DockerClient.semaphore
 		if containerID != "" {
 			if err := s.DockerClient.RemoveContainer(ctx, containerID); err != nil {
 				s.Logger.Error("failed to remove container", zap.String("container_id", containerID), zap.Error(err))
@@ -203,7 +190,7 @@ func (s *ProblemService) ProcessSolution(ctx context.Context, req SolutionReques
 	}
 
 	// Execute code against test cases
-	passed, failedTests, details, errorDetails, err := s.DockerClient.ExecuteCode(ctx, containerID, req.Language, testCases)
+	passed, failedTests, details, errorDetails, err := s.DockerClient.ExecuteTests(ctx, containerID, req.Language, testCases)
 	if err != nil && !errors.Is(err, ErrExecutionFailed) {
 		return nil, fmt.Errorf("failed to execute code: %w", err)
 	}

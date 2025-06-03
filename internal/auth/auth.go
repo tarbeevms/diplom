@@ -19,7 +19,7 @@ var (
 )
 
 var (
-	CookieExpirationTime = time.Now().Add(5 * time.Hour)
+	CookieExpirationTime = time.Now().Add(24 * time.Hour)
 )
 
 type SessionRepository interface {

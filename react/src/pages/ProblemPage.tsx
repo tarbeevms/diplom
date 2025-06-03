@@ -83,46 +83,68 @@ export default function ProblemPage() {
     if (problem && activeTab === 'problem') {
       // Give DOM time to render the HTML content
       const timer = setTimeout(() => {
+        // Apply styles to the container first to ensure proper constraints
+        const container = document.querySelector('.problem-description');
+        if (container) {
+          container.setAttribute('style', 'max-width: 100% !important; overflow-x: hidden !important; text-align: justify !important;');
+        }
+
         // Process all pre elements
         document.querySelectorAll('.problem-description pre').forEach(pre => {
-          pre.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important; overflow-x: auto !important;');
+          pre.setAttribute('style', 'white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important; overflow-x: auto !important; text-align: left !important;');
           
           // Find all children that could contain text that might overflow
           const allChildElements = pre.querySelectorAll('*');
           allChildElements.forEach(el => {
-            el.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+            el.setAttribute('style', 'white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important;');
           });
+        });
+        
+        // Process paragraphs for better text distribution
+        document.querySelectorAll('.problem-description p').forEach(p => {
+          p.setAttribute('style', 'max-width: 100% !important; overflow-wrap: break-word !important; word-break: normal !important; text-align: justify !important; hyphens: auto !important;');
         });
         
         // Process strong elements that might contain explanation text
         document.querySelectorAll('.problem-description strong').forEach(strong => {
-          strong.setAttribute('style', 'display: inline-block; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+          strong.setAttribute('style', 'display: inline !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important;');
         });
         
         // Handle specific code elements inside pre blocks
         document.querySelectorAll('.problem-description pre code').forEach(code => {
-          code.setAttribute('style', 'white-space: pre-wrap !important; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+          code.setAttribute('style', 'white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important; text-align: left !important;');
+        });
+        
+        // Handle ALL code elements (including those not in pre blocks)
+        document.querySelectorAll('.problem-description code').forEach(code => {
+          code.setAttribute('style', 'white-space: pre-wrap !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important;');
         });
         
         // Process all inline elements that might not wrap properly
-        document.querySelectorAll('.problem-description span, .problem-description font, .problem-description em').forEach(el => {
-          el.setAttribute('style', 'display: inline-block; word-break: break-all !important; max-width: 100% !important; overflow-wrap: break-word !important;');
+        document.querySelectorAll('.problem-description span, .problem-description font, .problem-description em, .problem-description b').forEach(el => {
+          el.setAttribute('style', 'display: inline !important; overflow-wrap: break-word !important; max-width: 100% !important; word-break: normal !important;');
         });
         
         // Fix potential issues with tables or other block elements
         document.querySelectorAll('.problem-description table, .problem-description ul, .problem-description ol').forEach(el => {
-          el.setAttribute('style', 'max-width: 100% !important; overflow-wrap: break-word !important; table-layout: fixed !important;');
+          el.setAttribute('style', 'max-width: 100% !important; overflow-wrap: break-word !important; word-break: normal !important; table-layout: fixed !important;');
         });
         
         // Process all <li> elements to ensure proper wrapping
         document.querySelectorAll('.problem-description li').forEach(el => {
-          el.setAttribute('style', 'word-break: break-all !important; overflow-wrap: break-word !important;');
+          el.setAttribute('style', 'overflow-wrap: break-word !important; word-break: normal !important; text-align: justify !important;');
         });
+        
+        // Ensure all images are responsive and don't overflow
+        document.querySelectorAll('.problem-description img').forEach(img => {
+          img.setAttribute('style', 'max-width: 100% !important; height: auto !important;');
+        });
+        
       }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [problem, activeTab]);
+  }, [problem, activeTab, language]);
 
   function getDefaultTemplate(lang: string) {
     if (lang === 'cpp') {
@@ -155,11 +177,31 @@ export default function ProblemPage() {
       // Используем текущий код для выбранного языка
       const currentCode = codes[language]
       const res = await submitSolution(uuid, { language, code: currentCode }, token || '')
+      
+      // Set the output regardless of whether it's a success or failure
       setOutput(res)
+      
+      // Only show toast for unexpected errors, not for compilation or execution errors
+      if (res.status === 'failed' && 
+          res.message !== 'Code compilation failed' && 
+          res.message !== 'Code execution failed') {
+        toast.error(res.message || 'Не удалось отправить решение')
+      }
+      
       // Автоматически переключаемся на вкладку с результатами при получении ответа
       setActiveTab('results')
     } catch (err: any) {
+      // This will only happen for network errors or other unexpected issues
       toast.error(err.message)
+      
+      // Create a generic error output that can be displayed in the results tab
+      setOutput({
+        status: 'failed',
+        message: 'Error connecting to server',
+        error_details: err.message || 'Произошла неизвестная ошибка при подключении к серверу'
+      })
+      
+      setActiveTab('results')
     } finally {
       setSubmitting(false)
     }
@@ -345,16 +387,16 @@ export default function ProblemPage() {
               <div className="px-6 py-5 h-full">
                 <div className="max-w-full break-words">
                   <div className="mb-8 relative">
-                    <div className="flex items-center gap-3 mb-3">
-                      {problem.id !== undefined && (
-                        <div className="inline-flex items-center justify-center font-mono text-white bg-gradient-to-br from-blue-500 to-blue-700 h-10 w-10 rounded-lg text-xl font-bold shadow-lg transition-transform duration-300 hover:scale-110">
-                          #{problem.id}
-                        </div>
-                      )}
-                      <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{problem.name}</h1>
-                    </div>
-                    <div className="absolute top-0 right-0">
-                      <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold shadow-md transition-transform duration-300 hover:scale-105 ${
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        {problem.id !== undefined && (
+                          <div className="inline-flex items-center justify-center font-mono text-white bg-gradient-to-br from-blue-500 to-blue-700 h-10 min-w-[2.5rem] w-10 rounded-lg text-xl font-bold shadow-lg transition-transform duration-300 hover:scale-110">
+                            #{problem.id}
+                          </div>
+                        )}
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{problem.name}</h1>
+                      </div>
+                      <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold shadow-md transition-transform duration-300 hover:scale-105 ml-4 ${
                         problem.difficulty === 'easy' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :
                         problem.difficulty === 'medium' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white' :
                         'bg-gradient-to-r from-red-500 to-rose-600 text-white'
@@ -367,7 +409,7 @@ export default function ProblemPage() {
                   </div>
                   <div className="problem-description">
                     <div 
-                      className="prose prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:overflow-wrap prose-pre:max-w-full prose-pre:overflow-x-auto prose-code:break-all prose-code:whitespace-pre-wrap prose-strong:break-words prose-strong:inline-block pb-8"
+                      className="prose prose-pre:whitespace-pre-wrap prose-pre:overflow-wrap prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:word-break-normal prose-code:overflow-wrap prose-code:whitespace-pre-wrap prose-code:max-w-full prose-strong:overflow-wrap prose-strong:inline pb-8 overflow-x-hidden text-justify hyphens-auto"
                       dangerouslySetInnerHTML={{ __html: problem.description }}
                     />
                   </div>
@@ -513,6 +555,57 @@ export default function ProblemPage() {
                           ))}
                         </div>
                       </details>
+                    )}
+
+                    {/* Compilation Error Display */}
+                    {output.status === 'failed' && output.message === 'Code compilation failed' && (
+                      <div className="bg-white rounded-xl border border-red-200 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-red-50 border-b border-red-200 flex items-center">
+                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-red-500" />
+                          <h3 className="text-sm font-medium text-red-700">Ошибка компиляции</h3>
+                        </div>
+                        <div className="p-4">
+                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-red-100 text-red-800 shadow-inner max-h-80 whitespace-pre-wrap">
+                            {output.error_details || "Во время компиляции произошла ошибка"}
+                          </pre>
+                          <div className="mt-3 text-sm text-gray-600">
+                            <p>Возможные причины ошибки:</p>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              <li>Синтаксические ошибки в коде</li>
+                              <li>Нехватка памяти в тестирующей системе</li>
+                              <li>Использование неопределенных переменных или функций</li>
+                              <li>Неправильные типы данных или несоответствие типов</li>
+                              <li>Отсутствие необходимых библиотек или зависимостей</li>
+                            </ul>
+                            <p className="mt-2">Пожалуйста, исправьте ошибки и попробуйте снова.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Runtime Error Display */}
+                    {output.status === 'failed' && output.message === 'Code execution failed' && (
+                      <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex items-center">
+                          <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-amber-500" />
+                          <h3 className="text-sm font-medium text-amber-700">Ошибка выполнения</h3>
+                        </div>
+                        <div className="p-4">
+                          <pre className="bg-gray-50 p-3 rounded-md text-xs font-mono overflow-x-auto border border-amber-100 text-amber-800 shadow-inner max-h-80 whitespace-pre-wrap">
+                            {output.error_details || "Во время выполнения программы произошла ошибка"}
+                          </pre>
+                          <div className="mt-3 text-sm text-gray-600">
+                            <p>Возможные причины ошибки:</p>
+                              <ul className="list-disc ml-5 mt-2 space-y-1">
+                                <li>Синтаксические ошибки (если вы используете, например, язык <span className="px-1 py-0.5 bg-blue-50 text-blue-700 rounded font-mono text-sm border border-blue-100">Python</span>)</li>
+                                <li>Ошибка во время выполнения (<span className="px-1 py-0.5 bg-red-50 text-red-700 rounded font-mono text-sm border border-red-100">Runtime Error</span>)</li>
+                                <li>Бесконечный цикл или превышение лимита времени</li>
+                                <li>Нехватка памяти или переполнение стека</li>
+                                <li>Неправильная обработка ввода/вывода</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     {/* Performance metrics in collapsible section - more compact version */}

@@ -198,7 +198,20 @@ export const getProblem = async (id: string, token: string) => {
 
 export const submitSolution = async (id: string, payload: any, token: string) => {
   try {
-    return await request(`/problem/${id}`, { method: "POST", body: JSON.stringify(payload) }, token);
+    const response = await fetch(`${BASE_URL}/problem/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    
+    // Even if the response indicates failure, return the data 
+    // so we can display the error details
+    return data;
   } catch (error) {
     if (error instanceof Error && error.message === 'Authentication required') {
       throw error;

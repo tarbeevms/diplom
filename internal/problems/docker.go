@@ -3,6 +3,7 @@ package problems
 import (
 	"bytes"
 	"context"
+	"diplom/config"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -38,7 +39,7 @@ func (h PythonHandler) GetRunCommand(_ string) []string {
 // C++ language implementation
 type CppHandler struct{}
 
-func (h CppHandler) GetImage() string          { return "gcc:latest" }
+func (h CppHandler) GetImage() string          { return "gcc:15.1" }
 func (h CppHandler) GetSourceFilename() string { return "solution.cpp" }
 func (h CppHandler) GetCompileCommand(filename string) string {
 	return fmt.Sprintf("g++ -O1 --param=ggc-min-expand=20 --param=ggc-min-heapsize=8192 /workspace/%s -o /workspace/solution", filename)
@@ -48,7 +49,7 @@ func (h CppHandler) GetRunCommand(_ string) []string { return []string{"/workspa
 // Java language implementation
 type JavaHandler struct{}
 
-func (h JavaHandler) GetImage() string          { return "openjdk:latest" }
+func (h JavaHandler) GetImage() string          { return "openjdk:11" }
 func (h JavaHandler) GetSourceFilename() string { return "Solution.java" }
 func (h JavaHandler) GetCompileCommand(filename string) string {
 	return fmt.Sprintf("javac /workspace/%s", filename)
@@ -71,28 +72,40 @@ func GetLanguageHandler(language string) (LanguageHandler, error) {
 	}
 }
 
+const maxContainers = 15
+
 // DockerClient manages Docker interaction for code execution
 type DockerClient struct {
-	client *client.Client
-	logger *zap.Logger
-	config Config
+	client    *client.Client
+	logger    *zap.Logger
+	config    config.RuntimeConfig
+	semaphore chan struct{}
 }
 
 // NewDockerClient creates a new Docker client with the given configuration
-func NewDockerClient(logger *zap.Logger, config Config) (*DockerClient, error) {
+func NewDockerClient(logger *zap.Logger, config config.RuntimeConfig) (*DockerClient, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
 	return &DockerClient{
-		client: cli,
-		logger: logger,
-		config: config,
+		client:    cli,
+		logger:    logger,
+		config:    config,
+		semaphore: make(chan struct{}, maxContainers),
 	}, nil
 }
 
 // CreateContainer sets up a Docker container for code execution
 func (d *DockerClient) CreateContainer(ctx context.Context, code, language string) (string, string, error) {
+	select {
+	case d.semaphore <- struct{}{}:
+	case <-time.After(40 * time.Second):
+		return "", "", fmt.Errorf("server is busy, please try again later")
+	case <-ctx.Done():
+		return "", "", ctx.Err()
+	}
+
 	handler, err := GetLanguageHandler(language)
 	if err != nil {
 		return "", "", err
@@ -102,6 +115,7 @@ func (d *DockerClient) CreateContainer(ctx context.Context, code, language strin
 	srcFilename := handler.GetSourceFilename()
 	compileCmd := handler.GetCompileCommand(srcFilename)
 
+	memoryLimit := int64(d.config.MemoryLimitMB)
 	// Create container with secure configuration
 	resp, err := d.client.ContainerCreate(ctx,
 		&container.Config{
@@ -112,9 +126,9 @@ func (d *DockerClient) CreateContainer(ctx context.Context, code, language strin
 		},
 		&container.HostConfig{
 			Resources: container.Resources{
-				Memory:     int64(d.config.MemoryLimitMB) * 1024 * 1024,
-				MemorySwap: int64(d.config.MemoryLimitMB) * 1024 * 1024, // Disable swap
-				NanoCPUs:   int64(d.config.CPULimit) * 1000000000,       // CPUs in nanoseconds
+				Memory:     memoryLimit * 1024 * 1024,
+				MemorySwap: memoryLimit * 1024 * 1024,             // Disable swap
+				NanoCPUs:   int64(d.config.CPULimit) * 1000000000, // CPUs in nanoseconds
 				PidsLimit:  &d.config.ProcessLimit,
 			},
 			CapDrop:        []string{"ALL"},
@@ -198,12 +212,11 @@ func (d *DockerClient) execCommand(ctx context.Context, containerID, cmd string)
 }
 
 // ExecuteCode runs test cases against the provided code
-func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language string, testCases []TestCase) (bool, []TestCaseResult, SolutionResultDetails, string, error) {
+func (d *DockerClient) ExecuteTests(ctx context.Context, containerID, language string, testCases []TestCase) (bool, []TestCaseResult, SolutionResultDetails, string, error) {
 	var (
-		failedTests  []TestCaseResult
-		avgMemoryKB  float64
-		avgTimeMS    float64
-		errorDetails string
+		failedTests []TestCaseResult
+		avgMemoryKB float64
+		avgTimeMS   float64
 	)
 	isAllPassed := true
 
@@ -214,11 +227,10 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 
 	runCmd := handler.GetRunCommand("/workspace")
 
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, time.Duration(d.config.ExecutionTimeMS)*time.Millisecond)
+	defer cancel()
 	for _, tc := range testCases {
-		// Use timeout context for each test case
-		execCtx, cancel := context.WithTimeout(ctx, time.Duration(d.config.ExecutionTimeMS)*time.Millisecond)
-		defer cancel()
-
 		// Get initial memory stats using Docker stats API instead of cgroup files
 		initialMemOut, _, _ := d.execCommand(ctx, containerID, "cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null || cat /sys/fs/cgroup/memory.current 2>/dev/null || echo 0")
 
@@ -239,7 +251,7 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 		startTime := time.Now()
 
 		// Execute code
-		execResult, errDetails, err := d.runTestCase(execCtx, containerID, runCmd, tc.Input)
+		execResult, errDetails, err := d.runTestCase(ctx, containerID, runCmd, tc.Input)
 		if err != nil {
 			d.logger.Debug("execution error",
 				zap.Error(err),
@@ -301,7 +313,7 @@ func (d *DockerClient) ExecuteCode(ctx context.Context, containerID, language st
 	avgTimeMS = math.Round(avgTimeMS*100) / 100
 	avgMemoryKB = math.Round(avgMemoryKB*100) / 100
 
-	return isAllPassed, failedTests, SolutionResultDetails{AverageTime: avgTimeMS, AverageMemory: avgMemoryKB}, errorDetails, nil
+	return isAllPassed, failedTests, SolutionResultDetails{AverageTime: avgTimeMS, AverageMemory: avgMemoryKB}, "", nil
 }
 
 // runTestCase executes a single test case and returns its output
@@ -325,19 +337,56 @@ func (d *DockerClient) runTestCase(ctx context.Context, containerID string, cmd 
 	}
 	defer resp.Close()
 
-	// Send input
+	// Send input in a goroutine
 	go func() {
 		io.Copy(resp.Conn, strings.NewReader(input))
 		resp.CloseWrite()
 	}()
 
-	// Collect output
+	// Collect output with context handling
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
-	_, err = stdcopy.StdCopy(outBuf, errBuf, resp.Reader)
 
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read output: %w", err)
+	// Create a channel to signal when copying is done
+	done := make(chan struct{})
+	var copyErr error
+
+	go func() {
+		_, copyErr = stdcopy.StdCopy(outBuf, errBuf, resp.Reader)
+		close(done)
+	}()
+
+	// Wait for either context cancellation or copying completion
+	select {
+	case <-ctx.Done():
+		// Context was cancelled (timeout)
+		d.logger.Debug("execution timeout detected, killing process",
+			zap.String("container_id", containerID),
+			zap.String("exec_id", execID.ID))
+
+		// Kill the exec process - need to use a background context
+		killCtx, killCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer killCancel()
+
+		// Kill process by sending SIGKILL
+		// This requires inspecting exec instance to get PID
+		inspectResp, err := d.client.ContainerExecInspect(killCtx, execID.ID)
+		if err == nil && inspectResp.Pid > 0 {
+			// Kill by PID
+			killCmd := fmt.Sprintf("kill -9 %d", inspectResp.Pid)
+			d.execCommand(killCtx, containerID, killCmd)
+		}
+
+		// Kill any runaway child processes too
+		d.execCommand(killCtx, containerID, "pkill -9 -f solution || true")
+
+		return "", "", ErrExecutionTimeout
+
+	case <-done:
+		// Normal completion
+		if copyErr != nil {
+			return "", "", fmt.Errorf("failed to read output: %w", copyErr)
+		}
 	}
 
 	// Check for errors

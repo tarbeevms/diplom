@@ -52,6 +52,8 @@ export default function ProblemCard({ problem, index, isAlternate = false }: Pro
         code.style.padding = '0.1rem 0.2rem';
         code.style.borderRadius = '0.2rem';
         code.style.fontSize = '0.9em';
+        code.style.wordBreak = 'normal';
+        code.style.overflowWrap = 'break-word';
       });
       
       // Make images responsive
@@ -68,6 +70,8 @@ export default function ProblemCard({ problem, index, isAlternate = false }: Pro
         htmlEl.style.display = 'inline';
         htmlEl.style.overflow = 'hidden';
         htmlEl.style.textOverflow = 'ellipsis';
+        htmlEl.style.wordBreak = 'normal';
+        htmlEl.style.overflowWrap = 'break-word';
       });
     }
   }, [problem.description]);
@@ -85,8 +89,8 @@ export default function ProblemCard({ problem, index, isAlternate = false }: Pro
         <CardContent className="p-5">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-3">
-              {/* Modern number badge with gradient */}
-              <div className="inline-flex items-center justify-center font-mono text-white bg-gradient-to-br from-blue-500 to-blue-700 h-10 w-10 rounded-lg text-xl font-bold shadow-lg transition-transform duration-300 hover:scale-110">
+              {/* Modern number badge with gradient - FIXED WIDTH */}
+              <div className="inline-flex items-center justify-center font-mono text-white bg-gradient-to-br from-blue-500 to-blue-700 h-10 min-w-[2.5rem] w-10 rounded-lg text-xl font-bold shadow-lg transition-transform duration-300 hover:scale-110">
                 #{displayId}
               </div>
               <h3 className="font-semibold text-lg line-clamp-1">{problem.name}</h3>
@@ -98,12 +102,12 @@ export default function ProblemCard({ problem, index, isAlternate = false }: Pro
             </div>
           </div>
           
-          <div className="flex justify-between items-center bg-slate-50 rounded-lg p-3">
-            <div className="card-description-container w-full">
+          <div className="flex items-start bg-slate-50 rounded-lg p-3">
+            <div className="card-description-container flex-1 min-w-0 mr-3">
               {/* Render HTML content safely with fallback */}
               <div 
                 ref={descriptionRef}
-                className="text-sm text-gray-700 line-clamp-2 prose prose-sm max-w-full"
+                className="text-sm text-gray-700 line-clamp-2 prose prose-sm max-w-full break-words overflow-hidden"
                 dangerouslySetInnerHTML={{ __html: problem.description }}
               ></div>
               
@@ -113,7 +117,7 @@ export default function ProblemCard({ problem, index, isAlternate = false }: Pro
               </div>
             </div>
             {problem.solved && (
-              <div className="flex-shrink-0 ml-3 bg-green-100 p-1.5 rounded-full">
+              <div className="flex-shrink-0 bg-green-100 p-1.5 rounded-full">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               </div>
             )}
